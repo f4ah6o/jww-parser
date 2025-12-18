@@ -1,4 +1,27 @@
 // Package jww provides types and parsing functions for Jw_cad (JWW) files.
+//
+// Jw_cad is a popular 2D CAD software in Japan that uses the JWW binary file format.
+// This package handles the parsing of JWW files and conversion to Go data structures.
+//
+// The JWW file format characteristics:
+//   - Binary format using MFC CArchive serialization
+//   - Little-endian byte order
+//   - Shift-JIS text encoding
+//   - Supports layers, blocks, and various entity types (lines, arcs, text, etc.)
+//
+// Basic usage:
+//
+//	file, _ := os.Open("drawing.jww")
+//	defer file.Close()
+//
+//	doc, err := jww.Parse(file)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//
+//	for _, entity := range doc.Entities {
+//	    fmt.Printf("Entity type: %s\n", entity.Type())
+//	}
 package jww
 
 import (
@@ -13,17 +36,23 @@ import (
 )
 
 var (
-	ErrInvalidSignature   = errors.New("invalid JWW signature: expected 'JwwData.'")
+	// ErrInvalidSignature is returned when the file does not start with the JWW signature "JwwData.".
+	ErrInvalidSignature = errors.New("invalid JWW signature: expected 'JwwData.'")
+
+	// ErrUnsupportedVersion is returned when the JWW file version is not supported by this parser.
 	ErrUnsupportedVersion = errors.New("unsupported JWW version")
 )
 
-// Reader wraps an io.Reader to read JWW binary data in little-endian format.
+// Reader wraps an io.Reader to provide convenient methods for reading JWW binary data.
+// All multi-byte values are read in little-endian format, and text strings are
+// decoded from Shift-JIS to UTF-8.
 type Reader struct {
 	r   io.Reader
 	buf []byte
 }
 
-// NewReader creates a new JWW binary reader.
+// NewReader creates a new JWW binary reader that wraps the provided io.Reader.
+// The reader maintains an internal buffer for efficient binary data reading.
 func NewReader(r io.Reader) *Reader {
 	return &Reader{
 		r:   r,
@@ -31,7 +60,9 @@ func NewReader(r io.Reader) *Reader {
 	}
 }
 
-// ReadSignature reads and validates the JWW file signature "JwwData.".
+// ReadSignature reads and validates the JWW file signature.
+// The signature must be the 8-byte string "JwwData.".
+// Returns ErrInvalidSignature if the signature is invalid.
 func (r *Reader) ReadSignature() error {
 	sig := make([]byte, 8)
 	if _, err := io.ReadFull(r.r, sig); err != nil {
@@ -43,7 +74,8 @@ func (r *Reader) ReadSignature() error {
 	return nil
 }
 
-// ReadDWORD reads a 32-bit unsigned integer (little-endian).
+// ReadDWORD reads a 32-bit unsigned integer in little-endian format.
+// This corresponds to the Windows DWORD type used in the JWW file format.
 func (r *Reader) ReadDWORD() (uint32, error) {
 	if _, err := io.ReadFull(r.r, r.buf[:4]); err != nil {
 		return 0, err
@@ -51,7 +83,8 @@ func (r *Reader) ReadDWORD() (uint32, error) {
 	return binary.LittleEndian.Uint32(r.buf[:4]), nil
 }
 
-// ReadWORD reads a 16-bit unsigned integer (little-endian).
+// ReadWORD reads a 16-bit unsigned integer in little-endian format.
+// This corresponds to the Windows WORD type used in the JWW file format.
 func (r *Reader) ReadWORD() (uint16, error) {
 	if _, err := io.ReadFull(r.r, r.buf[:2]); err != nil {
 		return 0, err
@@ -59,7 +92,8 @@ func (r *Reader) ReadWORD() (uint16, error) {
 	return binary.LittleEndian.Uint16(r.buf[:2]), nil
 }
 
-// ReadBYTE reads a single byte.
+// ReadBYTE reads a single unsigned byte.
+// This corresponds to the Windows BYTE type used in the JWW file format.
 func (r *Reader) ReadBYTE() (byte, error) {
 	if _, err := io.ReadFull(r.r, r.buf[:1]); err != nil {
 		return 0, err
@@ -67,7 +101,8 @@ func (r *Reader) ReadBYTE() (byte, error) {
 	return r.buf[0], nil
 }
 
-// ReadDouble reads a 64-bit floating point number (little-endian).
+// ReadDouble reads a 64-bit IEEE 754 floating point number in little-endian format.
+// This is used for coordinate values and other measurements in JWW files.
 func (r *Reader) ReadDouble() (float64, error) {
 	if _, err := io.ReadFull(r.r, r.buf[:8]); err != nil {
 		return 0, err
@@ -76,9 +111,14 @@ func (r *Reader) ReadDouble() (float64, error) {
 	return float64FromBits(bits), nil
 }
 
-// ReadCString reads a length-prefixed string (MFC CString format).
-// Format: 1 byte length if < 255, otherwise 2 bytes if < 65535, otherwise 4 bytes.
-// Converts Shift-JIS to UTF-8.
+// ReadCString reads a length-prefixed string in MFC CString format.
+//
+// The string format is:
+//   - If length < 255: 1 byte length prefix
+//   - If length < 65535: 1 byte 0xFF marker + 2 byte length
+//   - Otherwise: 1 byte 0xFF marker + 2 byte 0xFFFF marker + 4 byte length
+//
+// The string data is encoded in Shift-JIS and automatically converted to UTF-8.
 func (r *Reader) ReadCString() (string, error) {
 	// Read length prefix
 	lenByte, err := r.ReadBYTE()
@@ -120,25 +160,31 @@ func (r *Reader) ReadCString() (string, error) {
 	return shiftJISToUTF8(strBuf), nil
 }
 
-// ReadBytes reads n bytes into the provided buffer.
+// ReadBytes reads exactly len(buf) bytes into the provided buffer.
+// Returns an error if fewer bytes are available.
 func (r *Reader) ReadBytes(buf []byte) error {
 	_, err := io.ReadFull(r.r, buf)
 	return err
 }
 
-// Skip skips n bytes.
+// Skip skips n bytes in the input stream.
+// This is useful for skipping over unknown or unneeded data structures.
 func (r *Reader) Skip(n int) error {
 	buf := make([]byte, n)
 	_, err := io.ReadFull(r.r, buf)
 	return err
 }
 
-// float64FromBits converts uint64 bits to float64.
+// float64FromBits converts a uint64 bit pattern to a float64 value.
+// This uses unsafe pointer conversion to reinterpret the bits as a float64.
 func float64FromBits(bits uint64) float64 {
 	return *(*float64)(unsafe.Pointer(&bits))
 }
 
-// shiftJISToUTF8 converts Shift-JIS encoded bytes to UTF-8 string.
+// shiftJISToUTF8 converts Shift-JIS encoded bytes to a UTF-8 string.
+// Shift-JIS is the legacy Japanese character encoding used by JWW files.
+// Null bytes are trimmed from the result.
+// If conversion fails, the raw bytes are returned as a fallback.
 func shiftJISToUTF8(data []byte) string {
 	decoder := japanese.ShiftJIS.NewDecoder()
 	result, _, err := transform.Bytes(decoder, data)

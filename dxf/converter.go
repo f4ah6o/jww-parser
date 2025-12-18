@@ -7,7 +7,21 @@ import (
 	"github.com/f4ah6o/jww-dxf/jww"
 )
 
-// ConvertDocument converts a JWW document to a DXF document.
+// ConvertDocument converts a JWW (Jw_cad) document to a DXF document.
+//
+// This function transforms JWW entities into their DXF equivalents:
+//   - JWW layers are converted to DXF layers with appropriate mapping
+//   - JWW entities (Line, Arc, Point, Text, Solid, Block) are converted to DXF entities
+//   - JWW block definitions are converted to DXF blocks
+//
+// The conversion handles:
+//   - Layer group and layer hierarchy mapping
+//   - Color index mapping
+//   - Coordinate system preservation
+//   - Arc and ellipse geometry conversion
+//   - Text encoding (Shift-JIS to Unicode)
+//
+// Returns a DXF Document ready to be written to a file.
 func ConvertDocument(doc *jww.Document) *Document {
 	dxfDoc := &Document{
 		Layers:   convertLayers(doc),
@@ -18,6 +32,9 @@ func ConvertDocument(doc *jww.Document) *Document {
 }
 
 // convertLayers creates DXF layers from JWW layer groups.
+// JWW has 16 layer groups with 16 layers each (256 total layers).
+// Each JWW layer is converted to a single DXF layer with a name like "0-0" or "F-A".
+// Layer properties (frozen, locked) are preserved in the conversion.
 func convertLayers(doc *jww.Document) []Layer {
 	var layers []Layer
 
@@ -43,7 +60,10 @@ func convertLayers(doc *jww.Document) []Layer {
 	return layers
 }
 
-// convertEntities converts JWW entities to DXF entities.
+// convertEntities converts all JWW entities to DXF entities.
+// This function iterates through all entities in the JWW document and
+// converts each one based on its type. Unsupported or invalid entities
+// are skipped.
 func convertEntities(doc *jww.Document) []Entity {
 	var entities []Entity
 
@@ -57,7 +77,17 @@ func convertEntities(doc *jww.Document) []Entity {
 	return entities
 }
 
-// convertEntity converts a single JWW entity to a DXF entity.
+// convertEntity converts a single JWW entity to its DXF equivalent.
+//
+// Supported conversions:
+//   - jww.Line -> dxf.Line
+//   - jww.Arc -> dxf.Circle (for full circles) or dxf.Arc (for arcs) or dxf.Ellipse (for ellipses)
+//   - jww.Point -> dxf.Point (temporary points are skipped)
+//   - jww.Text -> dxf.Text (with Unicode escape conversion)
+//   - jww.Solid -> dxf.Solid
+//   - jww.Block -> dxf.Insert
+//
+// Returns nil for unsupported entity types or entities that should be skipped.
 func convertEntity(e jww.Entity, doc *jww.Document) Entity {
 	base := e.Base()
 	layerName := getLayerName(doc, base.LayerGroup, base.Layer)
@@ -86,12 +116,22 @@ func convertEntity(e jww.Entity, doc *jww.Document) Entity {
 			}
 		} else if v.Flatness != 1.0 {
 			// Ellipse or elliptical arc
+			// DXF requires MinorRatio <= 1.0
+			// If Flatness > 1.0, we need to swap major and minor axes
 			majorRadius := v.Radius
-			minorRadius := v.Radius * v.Flatness
+			minorRatio := v.Flatness
+			tiltAngle := v.TiltAngle
+
+			if minorRatio > 1.0 {
+				// Swap axes: minor becomes major, rotate by 90°
+				majorRadius = v.Radius * v.Flatness
+				minorRatio = 1.0 / v.Flatness
+				tiltAngle = v.TiltAngle + math.Pi/2
+			}
 
 			// Major axis endpoint relative to center
-			majorAxisX := majorRadius * math.Cos(v.TiltAngle)
-			majorAxisY := majorRadius * math.Sin(v.TiltAngle)
+			majorAxisX := majorRadius * math.Cos(tiltAngle)
+			majorAxisY := majorRadius * math.Sin(tiltAngle)
 
 			startParam := v.StartAngle
 			endParam := v.StartAngle + v.ArcAngle
@@ -107,7 +147,7 @@ func convertEntity(e jww.Entity, doc *jww.Document) Entity {
 				CenterY:    v.CenterY,
 				MajorAxisX: majorAxisX,
 				MajorAxisY: majorAxisY,
-				MinorRatio: minorRadius / majorRadius,
+				MinorRatio: minorRatio,
 				StartParam: startParam,
 				EndParam:   endParam,
 			}
@@ -182,6 +222,8 @@ func convertEntity(e jww.Entity, doc *jww.Document) Entity {
 }
 
 // convertBlocks converts JWW block definitions to DXF blocks.
+// Each JWW block definition is converted to a DXF block with all its
+// entities converted to DXF equivalents.
 func convertBlocks(doc *jww.Document) []Block {
 	var blocks []Block
 
@@ -205,7 +247,9 @@ func convertBlocks(doc *jww.Document) []Block {
 	return blocks
 }
 
-// getLayerName returns the layer name for a given layer group and layer.
+// getLayerName returns the DXF layer name for a given JWW layer group and layer.
+// If the layer has a custom name, it is used. Otherwise, a default name
+// in the format "G-L" (e.g., "0-0", "F-A") is generated using hexadecimal notation.
 func getLayerName(doc *jww.Document, layerGroup, layer uint16) string {
 	if int(layerGroup) < 16 && int(layer) < 16 {
 		lg := &doc.LayerGroups[layerGroup]
@@ -217,7 +261,9 @@ func getLayerName(doc *jww.Document, layerGroup, layer uint16) string {
 	return fmt.Sprintf("%X-%X", layerGroup, layer)
 }
 
-// getBlockName returns the block name for a given definition number.
+// getBlockName returns the block name for a given JWW block definition number.
+// If the block has a custom name, it is used. Otherwise, a default name
+// like "BLOCK_1" is generated.
 func getBlockName(doc *jww.Document, defNumber uint32) string {
 	for _, bd := range doc.BlockDefs {
 		if bd.Number == defNumber {
@@ -230,7 +276,17 @@ func getBlockName(doc *jww.Document, defNumber uint32) string {
 	return fmt.Sprintf("BLOCK_%d", defNumber)
 }
 
-// mapColor maps JWW color to DXF ACI color.
+// mapColor maps JWW color codes to DXF ACI (AutoCAD Color Index) values.
+//
+// JWW color mapping:
+//   - 0: background color -> 0 (BYLAYER in DXF)
+//   - 1-9: basic colors -> 1-9 in DXF (red, yellow, green, cyan, blue, magenta, white/black, etc.)
+//   - 100+: extended SXF colors -> mapped to DXF colors 10+
+//
+// DXF ACI color reference:
+//   - 0: BYLAYER (inherits layer color)
+//   - 1: red, 2: yellow, 3: green, 4: cyan, 5: blue, 6: magenta, 7: white/black
+//   - 8-255: additional colors
 func mapColor(jwwColor uint16) int {
 	// JWW uses 1-9 for colors, 0 is background
 	// DXF ACI: 1=red, 2=yellow, 3=green, 4=cyan, 5=blue, 6=magenta, 7=white
@@ -247,7 +303,8 @@ func mapColor(jwwColor uint16) int {
 	return int(jwwColor)
 }
 
-// radToDeg converts radians to degrees.
+// radToDeg converts an angle from radians to degrees.
+// This is used for converting JWW angle values (in radians) to DXF angle values (in degrees).
 func radToDeg(rad float64) float64 {
 	return rad * 180.0 / math.Pi
 }

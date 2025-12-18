@@ -1,45 +1,106 @@
-// Package dxf provides types and generation functions for DXF format.
+// Package dxf provides types and generation functions for the DXF (Drawing Exchange Format) file format.
+//
+// DXF is an ASCII-based CAD data file format developed by Autodesk for enabling
+// data interoperability between AutoCAD and other programs.
+//
+// This package provides:
+//   - DXF document structure representation
+//   - Entity types (Line, Arc, Circle, Text, etc.)
+//   - Layer and block definitions
+//   - DXF file writing capabilities
+//
+// Basic usage:
+//
+//	doc := &dxf.Document{
+//	    Layers: []dxf.Layer{
+//	        {Name: "0", Color: 7, LineType: "CONTINUOUS"},
+//	    },
+//	    Entities: []dxf.Entity{
+//	        &dxf.Line{Layer: "0", X1: 0, Y1: 0, X2: 100, Y2: 100},
+//	    },
+//	}
+//
+//	w := dxf.NewWriter(outputFile)
+//	w.WriteDocument(doc)
 package dxf
 
-// Document represents a DXF document structure.
+// Document represents a complete DXF document structure.
+// It contains layer definitions, drawing entities, and optional block definitions.
 type Document struct {
-	Layers   []Layer
+	// Layers contains the layer definitions used by entities.
+	Layers []Layer
+
+	// Entities contains all drawing entities in the document.
 	Entities []Entity
-	Blocks   []Block
+
+	// Blocks contains reusable block definitions.
+	Blocks []Block
 }
 
-// Layer represents a layer definition.
+// Layer represents a DXF layer definition.
+// Layers are used to organize entities by grouping related objects together.
 type Layer struct {
-	Name     string
-	Color    int // ACI color (1-255)
+	// Name is the layer name (e.g., "0" for the default layer).
+	Name string
+
+	// Color is the AutoCAD Color Index (ACI) value (1-255).
+	// Common values: 1=red, 2=yellow, 3=green, 4=cyan, 5=blue, 6=magenta, 7=white/black.
+	Color int
+
+	// LineType specifies the line pattern (e.g., "CONTINUOUS", "DASHED").
 	LineType string
-	Frozen   bool
-	Locked   bool
+
+	// Frozen indicates if the layer is frozen (not visible and not printable).
+	Frozen bool
+
+	// Locked indicates if the layer is locked (visible but not editable).
+	Locked bool
 }
 
-// Entity is the interface for all DXF entities.
+// Entity is the interface implemented by all DXF drawing entities.
+// Each entity must provide its type name and group code representation.
 type Entity interface {
+	// EntityType returns the DXF entity type name (e.g., "LINE", "CIRCLE", "TEXT").
 	EntityType() string
+
+	// GroupCodes returns the entity's data as DXF group code/value pairs.
 	GroupCodes() []GroupCode
 }
 
-// GroupCode represents a DXF group code/value pair.
+// GroupCode represents a DXF group code and its associated value.
+// DXF files are structured as pairs of group codes (integers) and values.
+// Group codes indicate the type of data element (e.g., 0=entity type, 10=X coordinate, 8=layer name).
 type GroupCode struct {
-	Code  int
+	// Code is the DXF group code integer (0-999).
+	Code int
+
+	// Value is the associated value (string, int, or float64).
 	Value interface{}
 }
 
-// Line represents a LINE entity.
+// Line represents a DXF LINE entity.
+// A line is defined by two points in 2D or 3D space.
 type Line struct {
-	Layer    string
-	Color    int // 0 = BYLAYER
-	X1, Y1   float64
-	X2, Y2   float64
+	// Layer is the name of the layer this entity belongs to.
+	Layer string
+
+	// Color is the ACI color number (0 = BYLAYER, 1-255 = specific colors).
+	Color int
+
+	// X1, Y1 are the coordinates of the line's start point.
+	X1, Y1 float64
+
+	// X2, Y2 are the coordinates of the line's end point.
+	X2, Y2 float64
+
+	// LineType specifies the line pattern (e.g., "CONTINUOUS", "DASHED").
 	LineType string
 }
 
+// EntityType returns "LINE".
 func (l *Line) EntityType() string { return "LINE" }
 
+// GroupCodes returns the DXF group codes for this line entity.
 func (l *Line) GroupCodes() []GroupCode {
 	return []GroupCode{
 		{0, "LINE"},
@@ -54,17 +115,27 @@ func (l *Line) GroupCodes() []GroupCode {
 	}
 }
 
-// Circle represents a CIRCLE entity.
+// Circle represents a DXF CIRCLE entity.
+// A circle is defined by its center point and radius.
 type Circle struct {
-	Layer   string
-	Color   int
+	// Layer is the name of the layer this entity belongs to.
+	Layer string
+
+	// Color is the ACI color number (0 = BYLAYER).
+	Color int
+
+	// CenterX, CenterY are the coordinates of the circle's center point.
 	CenterX float64
 	CenterY float64
-	Radius  float64
+
+	// Radius is the circle's radius.
+	Radius float64
 }
 
+// EntityType returns "CIRCLE".
 func (c *Circle) EntityType() string { return "CIRCLE" }
 
+// GroupCodes returns the DXF group codes for this circle entity.
 func (c *Circle) GroupCodes() []GroupCode {
 	return []GroupCode{
 		{0, "CIRCLE"},
@@ -77,17 +148,30 @@ func (c *Circle) GroupCodes() []GroupCode {
 	}
 }
 
-// Arc represents an ARC entity.
+// Arc represents a DXF ARC entity.
+// An arc is a portion of a circle defined by center, radius, and start/end angles.
 type Arc struct {
-	Layer      string
-	Color      int
-	CenterX    float64
-	CenterY    float64
-	Radius     float64
-	StartAngle float64 // degrees
-	EndAngle   float64 // degrees
+	// Layer is the name of the layer this entity belongs to.
+	Layer string
+
+	// Color is the ACI color number (0 = BYLAYER).
+	Color int
+
+	// CenterX, CenterY are the coordinates of the arc's center point.
+	CenterX float64
+	CenterY float64
+
+	// Radius is the arc's radius.
+	Radius float64
+
+	// StartAngle is the starting angle in degrees (0-360).
+	StartAngle float64
+
+	// EndAngle is the ending angle in degrees (0-360).
+	EndAngle float64
 }
 
+// EntityType returns "ARC".
 func (a *Arc) EntityType() string { return "ARC" }
 
 func (a *Arc) GroupCodes() []GroupCode {
@@ -104,19 +188,34 @@ func (a *Arc) GroupCodes() []GroupCode {
 	}
 }
 
-// Ellipse represents an ELLIPSE entity.
+// Ellipse represents a DXF ELLIPSE entity.
+// An ellipse is defined by center point, major/minor axes, and optional start/end parameters for partial ellipses.
 type Ellipse struct {
-	Layer      string
-	Color      int
-	CenterX    float64
-	CenterY    float64
-	MajorAxisX float64 // Endpoint of major axis relative to center
+	// Layer is the name of the layer this entity belongs to.
+	Layer string
+
+	// Color is the ACI color number (0 = BYLAYER).
+	Color int
+
+	// CenterX, CenterY are the coordinates of the ellipse's center point.
+	CenterX float64
+	CenterY float64
+
+	// MajorAxisX, MajorAxisY are the endpoint of the major axis relative to the center.
+	MajorAxisX float64
 	MajorAxisY float64
-	MinorRatio float64 // Ratio of minor to major axis
-	StartParam float64 // Start parameter (0.0 for full ellipse)
-	EndParam   float64 // End parameter (2*PI for full ellipse)
+
+	// MinorRatio is the ratio of minor axis to major axis (0.0 to 1.0).
+	MinorRatio float64
+
+	// StartParam is the start parameter in radians (0.0 for full ellipse).
+	StartParam float64
+
+	// EndParam is the end parameter in radians (2*PI for full ellipse).
+	EndParam float64
 }
 
+// EntityType returns "ELLIPSE".
 func (e *Ellipse) EntityType() string { return "ELLIPSE" }
 
 func (e *Ellipse) GroupCodes() []GroupCode {
@@ -136,15 +235,23 @@ func (e *Ellipse) GroupCodes() []GroupCode {
 	}
 }
 
-// Point represents a POINT entity.
+// Point represents a DXF POINT entity.
+// A point is a single location in 2D or 3D space.
 type Point struct {
+	// Layer is the name of the layer this entity belongs to.
 	Layer string
+
+	// Color is the ACI color number (0 = BYLAYER).
 	Color int
-	X, Y  float64
+
+	// X, Y are the coordinates of the point.
+	X, Y float64
 }
 
+// EntityType returns "POINT".
 func (p *Point) EntityType() string { return "POINT" }
 
+// GroupCodes returns the DXF group codes for this point entity.
 func (p *Point) GroupCodes() []GroupCode {
 	return []GroupCode{
 		{0, "POINT"},
@@ -156,17 +263,32 @@ func (p *Point) GroupCodes() []GroupCode {
 	}
 }
 
-// Text represents a TEXT entity.
+// Text represents a DXF TEXT entity.
+// Text entities display a single line of text at a specified location.
 type Text struct {
-	Layer    string
-	Color    int
-	X, Y     float64
-	Height   float64
-	Rotation float64 // degrees
-	Content  string
-	Style    string
+	// Layer is the name of the layer this entity belongs to.
+	Layer string
+
+	// Color is the ACI color number (0 = BYLAYER).
+	Color int
+
+	// X, Y are the coordinates of the text insertion point.
+	X, Y float64
+
+	// Height is the text height in drawing units.
+	Height float64
+
+	// Rotation is the text rotation angle in degrees.
+	Rotation float64
+
+	// Content is the actual text string to display.
+	Content string
+
+	// Style is the text style name (e.g., "STANDARD").
+	Style string
 }
 
+// EntityType returns "TEXT".
 func (t *Text) EntityType() string { return "TEXT" }
 
 func (t *Text) GroupCodes() []GroupCode {
@@ -189,18 +311,32 @@ func (t *Text) GroupCodes() []GroupCode {
 	return codes
 }
 
-// Solid represents a SOLID entity (filled triangle/quadrilateral).
+// Solid represents a DXF SOLID entity (filled triangle or quadrilateral).
+// Solids are used to create filled areas and hatching patterns.
 type Solid struct {
-	Layer  string
-	Color  int
+	// Layer is the name of the layer this entity belongs to.
+	Layer string
+
+	// Color is the ACI color number (0 = BYLAYER).
+	Color int
+
+	// X1, Y1 are the coordinates of the first corner point.
 	X1, Y1 float64
+
+	// X2, Y2 are the coordinates of the second corner point.
 	X2, Y2 float64
+
+	// X3, Y3 are the coordinates of the third corner point.
 	X3, Y3 float64
+
+	// X4, Y4 are the coordinates of the fourth corner point (same as X3, Y3 for triangles).
 	X4, Y4 float64
 }
 
+// EntityType returns "SOLID".
 func (s *Solid) EntityType() string { return "SOLID" }
 
+// GroupCodes returns the DXF group codes for this solid entity.
 func (s *Solid) GroupCodes() []GroupCode {
 	return []GroupCode{
 		{0, "SOLID"},
@@ -221,19 +357,35 @@ func (s *Solid) GroupCodes() []GroupCode {
 	}
 }
 
-// Insert represents an INSERT (block reference) entity.
+// Insert represents a DXF INSERT entity (block reference).
+// Inserts allow reusing block definitions with different positions, scales, and rotations.
 type Insert struct {
-	Layer     string
-	Color     int
+	// Layer is the name of the layer this entity belongs to.
+	Layer string
+
+	// Color is the ACI color number (0 = BYLAYER).
+	Color int
+
+	// BlockName is the name of the block definition to insert.
 	BlockName string
-	X, Y      float64
-	ScaleX    float64
-	ScaleY    float64
-	Rotation  float64 // degrees
+
+	// X, Y are the coordinates of the insertion point.
+	X, Y float64
+
+	// ScaleX is the X-axis scale factor.
+	ScaleX float64
+
+	// ScaleY is the Y-axis scale factor.
+	ScaleY float64
+
+	// Rotation is the rotation angle in degrees.
+	Rotation float64
 }
 
+// EntityType returns "INSERT".
 func (i *Insert) EntityType() string { return "INSERT" }
 
+// GroupCodes returns the DXF group codes for this insert entity.
 func (i *Insert) GroupCodes() []GroupCode {
 	return []GroupCode{
 		{0, "INSERT"},
@@ -250,10 +402,17 @@ func (i *Insert) GroupCodes() []GroupCode {
 	}
 }
 
-// Block represents a block definition.
+// Block represents a DXF block definition.
+// Blocks are reusable collections of entities that can be inserted multiple times
+// via Insert entities with different transformations.
 type Block struct {
-	Name     string
-	BaseX    float64
-	BaseY    float64
+	// Name is the unique block name.
+	Name string
+
+	// BaseX, BaseY are the coordinates of the block's base point.
+	BaseX float64
+	BaseY float64
+
+	// Entities contains the entities that comprise this block.
 	Entities []Entity
 }

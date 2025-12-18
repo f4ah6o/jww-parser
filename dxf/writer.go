@@ -7,25 +7,36 @@ import (
 	"unicode"
 )
 
-// Writer serializes DXF documents to an io.Writer.
+// Writer serializes DXF documents to an io.Writer in ASCII DXF format.
+// The writer manages handle generation for entities and writes properly
+// formatted DXF group codes.
 type Writer struct {
 	w          io.Writer
 	nextHandle int
 }
 
-// NewWriter creates a new DXF writer.
+// NewWriter creates a new DXF writer that outputs to the provided io.Writer.
+// The writer starts with handle counter at 1 and will auto-increment for each
+// entity requiring a unique handle.
 func NewWriter(w io.Writer) *Writer {
 	return &Writer{w: w, nextHandle: 1}
 }
 
-// getHandle returns the next available handle as a hex string.
+// getHandle returns the next available handle as a hexadecimal string.
+// Handles are unique identifiers for DXF objects and are auto-incremented.
 func (w *Writer) getHandle() string {
 	h := fmt.Sprintf("%X", w.nextHandle)
 	w.nextHandle++
 	return h
 }
 
-// EscapeUnicode converts non-ASCII characters to DXF Unicode escape format (\U+XXXX).
+// EscapeUnicode converts non-ASCII characters to DXF Unicode escape format.
+//
+// DXF uses the escape sequence \U+XXXX for Unicode characters, where XXXX is
+// the hexadecimal Unicode code point. This function converts any non-ASCII
+// or non-printable characters to this format.
+//
+// Example: "日本語" -> "\U+65E5\U+672C\U+8A9E"
 func EscapeUnicode(s string) string {
 	var sb strings.Builder
 	for _, r := range s {
@@ -39,7 +50,17 @@ func EscapeUnicode(s string) string {
 	return sb.String()
 }
 
-// WriteDocument writes a complete DXF document.
+// WriteDocument writes a complete DXF document to the output stream.
+//
+// The DXF file structure consists of the following sections in order:
+//   1. HEADER section - document settings and variables
+//   2. TABLES section - layer, linetype, and text style definitions
+//   3. BLOCKS section - block definitions
+//   4. ENTITIES section - drawing entities
+//   5. EOF marker
+//
+// This method orchestrates writing all sections in the correct order
+// and with proper DXF formatting.
 func (w *Writer) WriteDocument(doc *Document) error {
 	// HEADER section
 	if err := w.writeHeader(); err != nil {
@@ -342,6 +363,14 @@ func (w *Writer) writeEndSection() error {
 	return w.writeGroupCode(0, "ENDSEC")
 }
 
+// writeGroupCode writes a single DXF group code/value pair.
+//
+// DXF files are structured as pairs of:
+//   - Group code (integer, right-aligned in 3 characters)
+//   - Value (string, int, or float64, on the next line)
+//
+// The group code indicates the type of data (e.g., 0=entity type, 8=layer, 10=X coordinate).
+// This method formats the pair according to DXF specifications.
 func (w *Writer) writeGroupCode(code int, value interface{}) error {
 	var line string
 	switch v := value.(type) {
@@ -358,7 +387,14 @@ func (w *Writer) writeGroupCode(code int, value interface{}) error {
 	return err
 }
 
-// ToString serializes a Document to a DXF string.
+// ToString serializes a DXF Document to a string in ASCII DXF format.
+// This is a convenience function that creates a Writer with a strings.Builder
+// and returns the complete DXF file as a string.
+//
+// Example:
+//
+//	dxfContent := dxf.ToString(doc)
+//	os.WriteFile("output.dxf", []byte(dxfContent), 0644)
 func ToString(doc *Document) string {
 	var sb strings.Builder
 	w := NewWriter(&sb)

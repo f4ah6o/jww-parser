@@ -6,7 +6,36 @@ import (
 	"io"
 )
 
-// Parse reads a JWW file and returns a Document.
+// Parse reads a JWW (Jw_cad) file from the provided reader and returns a parsed Document.
+//
+// The function reads the entire file into memory, validates the JWW signature,
+// and parses the binary structure according to the MFC CArchive serialization format.
+// It extracts layer information, drawing entities, and block definitions.
+//
+// The JWW file format uses:
+//   - Little-endian byte order
+//   - Shift-JIS text encoding (converted to UTF-8)
+//   - MFC CArchive serialization with PID tracking
+//
+// Returns an error if:
+//   - The file cannot be read
+//   - The file signature is invalid (not "JwwData.")
+//   - The file structure is corrupted or unsupported
+//
+// Example:
+//
+//	f, err := os.Open("drawing.jww")
+//	if err != nil {
+//	    return err
+//	}
+//	defer f.Close()
+//
+//	doc, err := jww.Parse(f)
+//	if err != nil {
+//	    return fmt.Errorf("parsing JWW file: %w", err)
+//	}
+//
+//	fmt.Printf("Version: %d, Entities: %d\n", doc.Version, len(doc.Entities))
 func Parse(r io.Reader) (*Document, error) {
 	// Read entire file into memory for simpler parsing
 	data, err := io.ReadAll(r)
@@ -356,7 +385,10 @@ func parseBlockDefWithTracking(jr *Reader, version uint32, classMap map[uint16]s
 	return bd, nextID, nil
 }
 
-// parseDimension parses a dimension entity (CDataSunpou)
+// parseDimension parses a dimension entity from the JWW file (JWW class: CDataSunpou).
+// Dimensions are complex entities composed of lines and text to show measurements.
+// This function extracts the dimension data and returns the associated line entity.
+// Version 4.20 and later include additional SXF mode data.
 func parseDimension(jr *Reader, version uint32) (Entity, error) {
 	base, err := parseEntityBase(jr, version)
 	if err != nil {
@@ -391,7 +423,13 @@ func parseDimension(jr *Reader, version uint32) (Entity, error) {
 	return line, nil
 }
 
-// parseEntityBase reads the common entity base fields.
+// parseEntityBase reads the common entity base fields shared by all entity types.
+// This function extracts attributes like layer, color, line style, and flags
+// that are present at the beginning of every JWW entity structure.
+//
+// The structure varies slightly based on the file version:
+//   - Ver.3.51+: includes PenWidth field
+//   - Earlier versions: no PenWidth field
 func parseEntityBase(jr *Reader, version uint32) (*EntityBase, error) {
 	base := &EntityBase{}
 
@@ -442,7 +480,8 @@ func parseEntityBase(jr *Reader, version uint32) (*EntityBase, error) {
 	return base, nil
 }
 
-// parseLine reads a line entity (CDataSen).
+// parseLine reads a line entity from the JWW file (JWW class: CDataSen).
+// Lines are represented by start and end points in 2D coordinate space.
 func parseLine(jr *Reader, version uint32) (*Line, error) {
 	base, err := parseEntityBase(jr, version)
 	if err != nil {
@@ -459,7 +498,9 @@ func parseLine(jr *Reader, version uint32) (*Line, error) {
 	return line, nil
 }
 
-// parseArc reads an arc entity (CDataEnko).
+// parseArc reads an arc or circle entity from the JWW file (JWW class: CDataEnko).
+// This entity type can represent circles, ellipses, arcs, or elliptical arcs
+// based on the Flatness and IsFullCircle properties.
 func parseArc(jr *Reader, version uint32) (*Arc, error) {
 	base, err := parseEntityBase(jr, version)
 	if err != nil {
@@ -481,7 +522,8 @@ func parseArc(jr *Reader, version uint32) (*Arc, error) {
 	return arc, nil
 }
 
-// parsePoint reads a point entity (CDataTen).
+// parsePoint reads a point entity from the JWW file (JWW class: CDataTen).
+// Points can be temporary construction points or permanent marker points with symbols.
 func parsePoint(jr *Reader, version uint32) (*Point, error) {
 	base, err := parseEntityBase(jr, version)
 	if err != nil {
@@ -504,7 +546,9 @@ func parsePoint(jr *Reader, version uint32) (*Point, error) {
 	return pt, nil
 }
 
-// parseText reads a text entity (CDataMoji).
+// parseText reads a text entity from the JWW file (JWW class: CDataMoji).
+// Text content is stored in Shift-JIS encoding and converted to UTF-8.
+// Text can have various fonts, sizes, and styles including bold and italic.
 func parseText(jr *Reader, version uint32) (*Text, error) {
 	base, err := parseEntityBase(jr, version)
 	if err != nil {
@@ -528,7 +572,8 @@ func parseText(jr *Reader, version uint32) (*Text, error) {
 	return txt, nil
 }
 
-// parseSolid reads a solid entity (CDataSolid).
+// parseSolid reads a solid fill entity from the JWW file (JWW class: CDataSolid).
+// Solids are quadrilaterals or triangles used for filled areas, hatching, and shading.
 func parseSolid(jr *Reader, version uint32) (*Solid, error) {
 	base, err := parseEntityBase(jr, version)
 	if err != nil {
@@ -553,7 +598,8 @@ func parseSolid(jr *Reader, version uint32) (*Solid, error) {
 	return solid, nil
 }
 
-// parseBlock reads a block insert (CDataBlock).
+// parseBlock reads a block insert entity from the JWW file (JWW class: CDataBlock).
+// Block inserts reference a block definition and can have independent scale and rotation.
 func parseBlock(jr *Reader, version uint32) (*Block, error) {
 	base, err := parseEntityBase(jr, version)
 	if err != nil {
