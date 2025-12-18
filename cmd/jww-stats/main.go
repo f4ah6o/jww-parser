@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/f4ah6o/jww-dxf/dxf"
 	"github.com/f4ah6o/jww-dxf/jww"
 )
 
@@ -22,6 +23,11 @@ type FileStats struct {
 	BlockDefs int
 	Unknown   []string
 	Error     string
+	// DXF conversion results
+	DXFEntities int
+	DXFLayers   int
+	DXFBlocks   int
+	DXFError    string
 }
 
 func main() {
@@ -71,6 +77,24 @@ func main() {
 			filepath.Base(s.Name), s.Version, s.Lines, s.Arcs, s.Points, s.Texts, s.Solids, s.Blocks, s.BlockDefs, errStr)
 	}
 
+	// Print DXF conversion results table
+	fmt.Println()
+	fmt.Println("## DXF Conversion Results")
+	fmt.Println()
+	fmt.Println("| File | DXF Entities | DXF Layers | DXF Blocks | Conversion Status |")
+	fmt.Println("|------|--------------|------------|------------|-------------------|")
+
+	for _, s := range allStats {
+		status := "✅"
+		if s.DXFError != "" {
+			status = "❌ " + s.DXFError
+		} else if s.Error != "" {
+			status = "⏭️ Parse failed"
+		}
+		fmt.Printf("| `%s` | %d | %d | %d | %s |\n",
+			filepath.Base(s.Name), s.DXFEntities, s.DXFLayers, s.DXFBlocks, status)
+	}
+
 	// Print unknown entities summary
 	unknownMap := make(map[string]int)
 	for _, s := range allStats {
@@ -97,9 +121,13 @@ func main() {
 	totalFiles := len(allStats)
 	successFiles := 0
 	errorFiles := 0
+	dxfSuccessFiles := 0
 	for _, s := range allStats {
 		if s.Error == "" {
 			successFiles++
+			if s.DXFError == "" {
+				dxfSuccessFiles++
+			}
 		} else {
 			errorFiles++
 		}
@@ -107,6 +135,7 @@ func main() {
 	fmt.Printf("- Total files: %d\n", totalFiles)
 	fmt.Printf("- Successfully parsed: %d\n", successFiles)
 	fmt.Printf("- Parse errors: %d\n", errorFiles)
+	fmt.Printf("- Successfully converted to DXF: %d\n", dxfSuccessFiles)
 }
 
 func parseFile(path string) FileStats {
@@ -146,6 +175,12 @@ func parseFile(path string) FileStats {
 			stats.Unknown = append(stats.Unknown, e.Type())
 		}
 	}
+
+	// Convert to DXF and collect statistics
+	dxfDoc := dxf.ConvertDocument(doc)
+	stats.DXFEntities = len(dxfDoc.Entities)
+	stats.DXFLayers = len(dxfDoc.Layers)
+	stats.DXFBlocks = len(dxfDoc.Blocks)
 
 	return stats
 }
