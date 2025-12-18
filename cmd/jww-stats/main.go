@@ -143,11 +143,13 @@ func main() {
 	errorFiles := 0
 	dxfSuccessFiles := 0
 	ezdxfPassFiles := 0
+	totalEzdxfFixes := 0
 	for _, s := range allStats {
 		if s.Error == "" {
 			successFiles++
 			if s.DXFError == "" {
 				dxfSuccessFiles++
+				totalEzdxfFixes += s.EzdxfFixes
 				if s.EzdxfErrors == 0 {
 					ezdxfPassFiles++
 				}
@@ -161,6 +163,7 @@ func main() {
 	fmt.Printf("- Parse errors: %d\n", errorFiles)
 	fmt.Printf("- Successfully converted to DXF: %d\n", dxfSuccessFiles)
 	fmt.Printf("- ezdxf audit passed (0 errors): %d\n", ezdxfPassFiles)
+	fmt.Printf("- ezdxf total fixes applied: %d\n", totalEzdxfFixes)
 }
 
 func parseFile(path string) FileStats {
