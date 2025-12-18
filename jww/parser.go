@@ -128,8 +128,8 @@ func findEntityListOffset(data []byte, version uint32) int {
 					className := string(data[i+6 : i+6+nameLen])
 					if len(className) >= 5 && className[:5] == "CData" {
 						// Found first entity class definition
-						// The count DWORD is right before this
-						return i - 4
+						// The count WORD is right before this (2 bytes)
+						return i - 2
 					}
 				}
 			}
@@ -144,10 +144,11 @@ func parseEntityListWithOffset(jr *Reader, version uint32) ([]Entity, int, error
 	startBytesBuffer := jr.buf // This is a hack; we need a better byte counter
 	_ = startBytesBuffer
 
-	count, err := jr.ReadDWORD()
+	countWord, err := jr.ReadWORD()
 	if err != nil {
 		return nil, 0, fmt.Errorf("reading entity count: %w", err)
 	}
+	count := uint32(countWord)
 
 	entities := make([]Entity, 0, count)
 	classMap := make(map[uint16]string)
