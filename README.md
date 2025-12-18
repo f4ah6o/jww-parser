@@ -1,4 +1,4 @@
-# jww-dxf
+# jww-parser
 
 Jw_cad (JWW) ファイルを解析し、DXF 形式への変換や情報抽出を行うための Go 言語ライブラリおよびツールです。
 
@@ -14,7 +14,7 @@ Jw_cad (JWW) ファイルを解析し、DXF 形式への変換や情報抽出を
 Go がインストールされている環境で以下を実行してください。
 
 ```bash
-go get github.com/f4ah6o/jww-dxf
+go get github.com/f4ah6o/jww-parser
 ```
 
 ## 使用方法
@@ -28,19 +28,19 @@ make build
 
 JWW ファイルの情報を表示:
 ```bash
-./bin/jww-dxf input.jww
+./bin/jww-parser input.jww
 ```
 
 DXF 形式で出力:
 ```bash
-./bin/jww-dxf -dxf -o output.dxf input.jww
+./bin/jww-parser -dxf -o output.dxf input.jww
 ```
 
 ### ライブラリとしての利用
 
 ```go
 import (
-    "github.com/f4ah6o/jww-dxf/jww"
+    "github.com/f4ah6o/jww-parser/jww"
     "os"
 )
 

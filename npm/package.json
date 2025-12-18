@@ -1,6 +1,6 @@
 {
-  "name": "jww-dxf",
-  "version": "0.1.0",
+  "name": "jww-parser",
+  "version": "1.0.0",
   "description": "JWW (Jw_cad) file parser and DXF converter for JavaScript/TypeScript",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -18,7 +18,7 @@
   ],
   "scripts": {
     "build": "npm run build:wasm && npm run build:js",
-    "build:wasm": "mkdir -p wasm && cd .. && make build-wasm && cp dist/jww-dxf.wasm npm/wasm/",
+    "build:wasm": "mkdir -p wasm && cd .. && make build-wasm && cp dist/jww-parser.wasm npm/wasm/",
     "build:js": "tsup src/index.ts --format cjs,esm --dts",
     "prepublishOnly": "npm run build"
   },
@@ -33,7 +33,7 @@
     "webassembly",
     "wasm"
   ],
-  "author": "",
+  "author": "f12o",
   "license": "AGPL-3.0",
   "repository": {
     "type": "git",

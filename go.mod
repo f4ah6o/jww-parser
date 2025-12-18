@@ -1,4 +1,4 @@
-module github.com/f4ah6o/jww-dxf
+module github.com/f4ah6o/jww-parser
 
 go 1.24.0
 

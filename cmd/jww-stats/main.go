@@ -14,8 +14,8 @@ import (
 	"sync"
 	"text/tabwriter"
 
-	"github.com/f4ah6o/jww-dxf/dxf"
-	"github.com/f4ah6o/jww-dxf/jww"
+	"github.com/f4ah6o/jww-parser/dxf"
+	"github.com/f4ah6o/jww-parser/jww"
 )
 
 // Command line flags

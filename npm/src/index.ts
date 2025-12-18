@@ -154,7 +154,7 @@ export class JwwParser {
 
   /**
    * Create a new JWW parser instance
-   * @param wasmPath - Path to the jww-dxf.wasm file
+   * @param wasmPath - Path to the jww-parser.wasm file
    */
   constructor(wasmPath?: string) {
     this.wasmPath = wasmPath || this.getDefaultWasmPath();
@@ -164,10 +164,10 @@ export class JwwParser {
     // Try to determine the path based on the environment
     if (typeof process !== "undefined" && process.versions?.node) {
       // Node.js environment
-      return new URL("../wasm/jww-dxf.wasm", import.meta.url).pathname;
+      return new URL("../wasm/jww-parser.wasm", import.meta.url).pathname;
     }
     // Browser environment
-    return "jww-dxf.wasm";
+    return "jww-parser.wasm";
   }
 
   /**
@@ -303,7 +303,7 @@ export class JwwParser {
 
 /**
  * Create and initialize a JWW parser instance
- * @param wasmPath - Optional path to the jww-dxf.wasm file
+ * @param wasmPath - Optional path to the jww-parser.wasm file
  * @returns Initialized JwwParser instance
  */
 export async function createParser(wasmPath?: string): Promise<JwwParser> {

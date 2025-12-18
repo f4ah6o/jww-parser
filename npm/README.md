@@ -1,4 +1,4 @@
-# jww-dxf
+# jww-parser
 
 JWW (Jw_cad) file parser and DXF converter for JavaScript/TypeScript.
 
@@ -7,7 +7,7 @@ This package uses WebAssembly to parse JWW binary files (created by [Jw_cad](htt
 ## Installation
 
 ```bash
-npm install jww-dxf
+npm install jww-parser
 ```
 
 ## Usage
@@ -15,7 +15,7 @@ npm install jww-dxf
 ### Node.js
 
 ```typescript
-import { createParser } from 'jww-dxf';
+import { createParser } from 'jww-parser';
 import { readFileSync } from 'fs';
 
 async function main() {
@@ -45,10 +45,10 @@ main();
 <!-- Include wasm_exec.js from Go -->
 <script src="wasm_exec.js"></script>
 <script type="module">
-  import { createParser } from 'jww-dxf';
+  import { createParser } from 'jww-parser';
 
   async function convertFile(file) {
-    const parser = await createParser('path/to/jww-dxf.wasm');
+    const parser = await createParser('path/to/jww-parser.wasm');
 
     const buffer = await file.arrayBuffer();
     const data = new Uint8Array(buffer);
@@ -73,7 +73,7 @@ main();
 
 Create and initialize a JWW parser instance.
 
-- `wasmPath` - Optional path to the `jww-dxf.wasm` file
+- `wasmPath` - Optional path to the `jww-parser.wasm` file
 
 ### `JwwParser`
 

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/f4ah6o/jww-dxf/jww"
+	"github.com/f4ah6o/jww-parser/jww"
 )
 
 // ConvertDocument converts a JWW (Jw_cad) document to a DXF document.

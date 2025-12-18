@@ -42,8 +42,8 @@
     async function loadWasm() {
         setStatus("WASM を読み込んでいます…");
         try {
-            const result = await WebAssembly.instantiateStreaming(fetch("jww-dxf.wasm"), go.importObject).catch(async () => {
-                const response = await fetch("jww-dxf.wasm");
+            const result = await WebAssembly.instantiateStreaming(fetch("jww-parser.wasm"), go.importObject).catch(async () => {
+                const response = await fetch("jww-parser.wasm");
                 const bytes = await response.arrayBuffer();
                 return WebAssembly.instantiate(bytes, go.importObject);
             });
