@@ -151,17 +151,21 @@ func parseEntityListWithOffset(jr *Reader, version uint32) ([]Entity, int, error
 	count := uint32(countWord)
 
 	entities := make([]Entity, 0, count)
-	classMap := make(map[uint16]string)
 
-	// Track next class ID to assign
-	nextClassID := uint16(1)
+	// MFC CArchive PID tracking:
+	// - Each new class definition gets a PID
+	// - Each object also gets a PID
+	// - PIDs are assigned sequentially starting from 1
+	// - Class references use 0x8000 | class_PID
+	pidToClassName := make(map[uint32]string) // PID -> class name
+	nextPID := uint32(1)
 
 	for i := uint32(0); i < count; i++ {
-		entity, newClassID, err := parseEntityWithClassTracking(jr, version, classMap, nextClassID)
+		entity, newPID, err := parseEntityWithPIDTracking(jr, version, pidToClassName, nextPID)
 		if err != nil {
 			return entities, 0, fmt.Errorf("parsing entity %d/%d: %w", i+1, count, err)
 		}
-		nextClassID = newClassID
+		nextPID = newPID
 		if entity != nil {
 			entities = append(entities, entity)
 		}
@@ -172,11 +176,16 @@ func parseEntityListWithOffset(jr *Reader, version uint32) ([]Entity, int, error
 	return entities, 0, nil
 }
 
-// parseEntityWithClassTracking parses an entity and manages class ID tracking.
-func parseEntityWithClassTracking(jr *Reader, version uint32, classMap map[uint16]string, nextID uint16) (Entity, uint16, error) {
+// parseEntityWithPIDTracking parses an entity using MFC CArchive PID tracking.
+// In MFC serialization:
+// - 0xFFFF = new class definition follows (schema + name), then assign PID to class
+// - 0x8000 = null object
+// - 0x8000 | n = reference to class with PID n
+// After parsing each object, assign a new PID to that object too.
+func parseEntityWithPIDTracking(jr *Reader, version uint32, pidToClassName map[uint32]string, nextPID uint32) (Entity, uint32, error) {
 	classID, err := jr.ReadWORD()
 	if err != nil {
-		return nil, nextID, err
+		return nil, nextPID, err
 	}
 
 	var className string
@@ -185,38 +194,39 @@ func parseEntityWithClassTracking(jr *Reader, version uint32, classMap map[uint1
 		// New class definition
 		schemaVer, err := jr.ReadWORD()
 		if err != nil {
-			return nil, nextID, fmt.Errorf("reading schema version: %w", err)
+			return nil, nextPID, fmt.Errorf("reading schema version: %w", err)
 		}
 		_ = schemaVer
 
 		nameLen, err := jr.ReadWORD()
 		if err != nil {
-			return nil, nextID, fmt.Errorf("reading class name length: %w", err)
+			return nil, nextPID, fmt.Errorf("reading class name length: %w", err)
 		}
 
 		nameBuf := make([]byte, nameLen)
 		if err := jr.ReadBytes(nameBuf); err != nil {
-			return nil, nextID, fmt.Errorf("reading class name: %w", err)
+			return nil, nextPID, fmt.Errorf("reading class name: %w", err)
 		}
 		className = string(nameBuf)
 
-		// Register class with next available ID
-		classMap[nextID] = className
-		nextID++
+		// Assign PID to this class definition
+		pidToClassName[nextPID] = className
+		nextPID++
 	} else if classID == 0x8000 {
 		// Null object
-		return nil, nextID, nil
+		return nil, nextPID, nil
 	} else {
-		// Existing class reference - the ID in the file is the stored class index
-		refID := classID & 0x7FFF
+		// Class reference: 0x8000 | class_PID
+		// The lower bits contain the PID of the class definition
+		classPID := uint32(classID & 0x7FFF)
 		var ok bool
-		className, ok = classMap[refID]
+		className, ok = pidToClassName[classPID]
 		if !ok {
-			return nil, nextID, fmt.Errorf("unknown class ID: %d (have %v)", refID, classMap)
+			return nil, nextPID, fmt.Errorf("unknown class PID: %d (have PIDs: %v)", classPID, getKeys(pidToClassName))
 		}
 	}
 
-	// Parse based on class name
+	// Parse the object based on class name
 	var entity Entity
 	switch className {
 	case "CDataSen":
@@ -234,13 +244,26 @@ func parseEntityWithClassTracking(jr *Reader, version uint32, classMap map[uint1
 	case "CDataSunpou":
 		entity, err = parseDimension(jr, version)
 	default:
-		return nil, nextID, fmt.Errorf("unknown entity class: %s", className)
+		return nil, nextPID, fmt.Errorf("unknown entity class: %s", className)
 	}
 
 	if err != nil {
-		return nil, nextID, err
+		return nil, nextPID, err
 	}
-	return entity, nextID, nil
+
+	// Assign PID to this object
+	nextPID++
+
+	return entity, nextPID, nil
+}
+
+// getKeys returns the keys of a map for debugging
+func getKeys(m map[uint32]string) []uint32 {
+	keys := make([]uint32, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 // parseLayerNames extracts layer names from the file.

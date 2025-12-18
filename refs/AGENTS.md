@@ -71,12 +71,19 @@ MFC CTypedPtrList<CObList, CData*> 形式：
         [WORD: schema version] (例: 0x0258 = 600)
         [WORD: class name length]
         [class name bytes] (例: "CDataSen")
+        → クラス定義にPIDを割り当て (nextPID++)
     if 0x8000:
         null object
     else:
-        existing class reference (mask with 0x7FFF)
+        0x8000 | class_PID形式のクラス参照
+        → pidToClassName[classPID]でクラス名を取得
 [entity data...]
+→ オブジェクトにもPIDを割り当て (nextPID++)
 ```
+
+> **重要**: MFC CArchiveでは、クラス定義とオブジェクトの両方に
+> 順番にPIDが割り当てられます。例えば、42個のCDataSenオブジェクトの後に
+> 新しいCDataEnkoクラスが出現した場合、そのクラスPIDは44になります。
 
 ### Entity Base (CData)
 
@@ -220,11 +227,25 @@ if version >= 420:       // SXF mode
 1. **バイトオーダー**: 全てリトルエンディアン
 2. **文字コード**: Shift-JIS → UTF-8への変換が必要
 3. **エンティティカウント**: WORD (2バイト) で格納
-4. **クラスID**: 出現順に1から割り当て、参照時は最上位ビットなし
+4. **PID追跡**: クラス定義とオブジェクトの両方にPIDを割り当て
+   - 新規クラス定義: `pidToClassName[nextPID] = className; nextPID++`
+   - オブジェクト解析後: `nextPID++`
+   - クラス参照: `0x8000 | class_PID` → `pidToClassName[classPID]`
 5. **座標系**: mm単位、Y軸上向き
 
-## Known Issues
+## Implementation Status
+
+| Entity | Parse | Convert | Notes |
+|--------|-------|---------|-------|
+| CDataSen | ✅ | ✅ | LINE |
+| CDataEnko | ✅ | ✅ | ARC/CIRCLE/ELLIPSE |
+| CDataTen | ✅ | ✅ | POINT |
+| CDataMoji | ✅ | ✅ | TEXT |
+| CDataSolid | ✅ | ✅ | SOLID |
+| CDataBlock | ✅ | ✅ | INSERT |
+| CDataSunpou | ⚠️ | - | 寸法 (LINEとして出力) |
+
+## Notes
 
 - EntityBaseのサイズはバージョンにより変動 (Ver.3.51前後で2バイト差)
-- MFCクラス参照のインデックスは実装依存の可能性あり
-- 一部の設定フィールドのサイズが不明確
+- テスト済み: 15サンプルファイル全て正常にパース
