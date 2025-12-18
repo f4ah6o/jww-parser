@@ -1,4 +1,4 @@
-.PHONY: build build-wasm test clean
+.PHONY: build build-wasm test clean convert-examples
 
 # Build native binary
 build:
@@ -18,6 +18,20 @@ dist: build-wasm copy-wasm-exec
 # Run tests
 test:
 	go test -v ./...
+
+stat:
+	go run ./cmd/jww-stats/ examples/jww
+
+# Convert all JWW files in examples/jww to DXF and save to examples/converted
+convert-examples: build
+	@mkdir -p examples/converted
+	@for f in examples/jww/*.jww; do \
+		if [ -f "$$f" ]; then \
+			echo "Converting $$f..."; \
+			./bin/jww-dxf "$$f" -o "examples/converted/$$(basename "$$f" .jww).dxf"; \
+		fi \
+	done
+	@echo "Done. Converted files are in examples/converted/"
 
 # Clean build artifacts
 clean:
