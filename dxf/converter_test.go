@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/f4ah6o/jww-dxf/jww"
+	"github.com/f4ah6o/jww-parser/jww"
 )
 
 func TestConvertLine(t *testing.T) {

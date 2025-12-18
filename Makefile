@@ -2,7 +2,7 @@
 
 # Build native binary
 build: clean-bin
-	go build -o bin/jww-dxf ./cmd/jww-dxf
+	go build -o bin/jww-parser ./cmd/jww-parser
 
 build-stats: clean-bin
 	go build -o bin/jww-stats ./cmd/jww-stats
@@ -11,7 +11,7 @@ build-stats: clean-bin
 build-wasm: clean-dist
 	rm -rf dist/
 	mkdir -p dist
-	GOOS=js GOARCH=wasm go build -o dist/jww-dxf.wasm ./wasm/
+	GOOS=js GOARCH=wasm go build -o dist/jww-parser.wasm ./wasm/
 
 # Copy wasm_exec.js from Go installation
 copy-wasm-exec:
@@ -45,7 +45,7 @@ convert-examples: build clean-converted
 	@for f in examples/jww/*.jww; do \
 		if [ -f "$$f" ]; then \
 			echo "Converting $$f..."; \
-			./bin/jww-dxf -o "examples/converted/$$(basename "$$f" .jww).dxf" "$$f"; \
+			./bin/jww-parser -o "examples/converted/$$(basename "$$f" .jww).dxf" "$$f"; \
 		fi \
 	done
 	@echo "Done. Converted files are in examples/converted/"
@@ -65,6 +65,6 @@ clean-converted:
 # Build npm package
 build-npm: build-wasm copy-wasm-exec
 	mkdir -p npm/wasm
-	cp dist/jww-dxf.wasm npm/wasm/
+	cp dist/jww-parser.wasm npm/wasm/
 	cp dist/wasm_exec.js npm/wasm/
 	cd npm && npm install && npm run build:js
