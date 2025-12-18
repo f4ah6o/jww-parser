@@ -36,6 +36,10 @@ type FileStats struct {
 	EzdxfErrors int
 	EzdxfFixes  int
 	EzdxfStatus string
+	// ODA FileConverter results
+	ODAWarnings int
+	ODAErrors   int
+	ODAStatus   string
 }
 
 func main() {
@@ -115,6 +119,18 @@ func main() {
 			filepath.Base(s.Name), s.EzdxfErrors, s.EzdxfFixes, s.EzdxfStatus)
 	}
 
+	// Print ODA FileConverter results table
+	fmt.Println()
+	fmt.Println("## ODA FileConverter Results")
+	fmt.Println()
+	fmt.Println("| File | Warnings | Errors | Status |")
+	fmt.Println("|------|----------|--------|--------|")
+
+	for _, s := range allStats {
+		fmt.Printf("| `%s` | %d | %d | %s |\n",
+			filepath.Base(s.Name), s.ODAWarnings, s.ODAErrors, s.ODAStatus)
+	}
+
 	// Print unknown entities summary
 	unknownMap := make(map[string]int)
 	for _, s := range allStats {
@@ -144,6 +160,7 @@ func main() {
 	dxfSuccessFiles := 0
 	ezdxfPassFiles := 0
 	totalEzdxfFixes := 0
+	odaPassFiles := 0
 	for _, s := range allStats {
 		if s.Error == "" {
 			successFiles++
@@ -152,6 +169,9 @@ func main() {
 				totalEzdxfFixes += s.EzdxfFixes
 				if s.EzdxfErrors == 0 {
 					ezdxfPassFiles++
+				}
+				if s.ODAErrors == 0 {
+					odaPassFiles++
 				}
 			}
 		} else {
@@ -164,10 +184,11 @@ func main() {
 	fmt.Printf("- Successfully converted to DXF: %d\n", dxfSuccessFiles)
 	fmt.Printf("- ezdxf audit passed (0 errors): %d\n", ezdxfPassFiles)
 	fmt.Printf("- ezdxf total fixes applied: %d\n", totalEzdxfFixes)
+	fmt.Printf("- ODA FileConverter passed (0 errors): %d\n", odaPassFiles)
 }
 
 func parseFile(path string) FileStats {
-	stats := FileStats{Name: path, EzdxfStatus: "⏭️ Skipped"}
+	stats := FileStats{Name: path, EzdxfStatus: "⏭️ Skipped", ODAStatus: "⏭️ Skipped"}
 
 	f, err := os.Open(path)
 	if err != nil {
@@ -233,6 +254,12 @@ func parseFile(path string) FileStats {
 	stats.EzdxfFixes = fixes
 	stats.EzdxfStatus = status
 
+	// Run ODA FileConverter
+	odaWarnings, odaErrors, odaStatus := runODAFileConverter(tmpPath)
+	stats.ODAWarnings = odaWarnings
+	stats.ODAErrors = odaErrors
+	stats.ODAStatus = odaStatus
+
 	return stats
 }
 
@@ -276,4 +303,77 @@ func runEzdxfAudit(dxfPath string) (errors, fixes int, status string) {
 	}
 
 	return errors, fixes, fmt.Sprintf("⚠️ %d errors", errors)
+}
+
+// runODAFileConverter runs ODA FileConverter on a DXF file and parses the results.
+func runODAFileConverter(dxfPath string) (warnings, errors int, status string) {
+	// Create temporary directories for input and output
+	tmpDir, err := os.MkdirTemp("", "oda-input-*")
+	if err != nil {
+		return 0, 0, "⏭️ temp dir error"
+	}
+	defer os.RemoveAll(tmpDir)
+
+	outDir, err := os.MkdirTemp("", "oda-output-*")
+	if err != nil {
+		return 0, 0, "⏭️ temp dir error"
+	}
+	defer os.RemoveAll(outDir)
+
+	// Copy DXF file to input directory
+	dxfContent, err := os.ReadFile(dxfPath)
+	if err != nil {
+		return 0, 0, "⏭️ read error"
+	}
+	inputPath := filepath.Join(tmpDir, "input.dxf")
+	if err := os.WriteFile(inputPath, dxfContent, 0644); err != nil {
+		return 0, 0, "⏭️ write error"
+	}
+
+	// Run ODAFileConverter
+	// Arguments: <input_dir> <output_dir> <output_version> <output_format> <recursive> <audit>
+	cmd := exec.Command("ODAFileConverter", tmpDir, outDir, "ACAD2018", "DWG", "0", "1")
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err = cmd.Run()
+	if err != nil {
+		// Check if it's a "command not found" type error
+		if strings.Contains(err.Error(), "executable file not found") {
+			return 0, 0, "⏭️ ODA not available"
+		}
+	}
+
+	// Look for .err file in output directory
+	errFiles, _ := filepath.Glob(filepath.Join(outDir, "*.err"))
+	if len(errFiles) == 0 {
+		// Check if DWG was created successfully
+		dwgFiles, _ := filepath.Glob(filepath.Join(outDir, "*.dwg"))
+		if len(dwgFiles) > 0 {
+			return 0, 0, "✅"
+		}
+		return 0, 1, "❌ no output"
+	}
+
+	// Parse error file
+	errContent, _ := os.ReadFile(errFiles[0])
+	lines := strings.Split(string(errContent), "\n")
+
+	for _, line := range lines {
+		if strings.Contains(line, "ODA Warning:") {
+			warnings++
+		}
+		if strings.Contains(line, "OdError") || strings.Contains(line, "ODA Error:") {
+			errors++
+		}
+	}
+
+	if errors > 0 {
+		return warnings, errors, fmt.Sprintf("❌ %d errors", errors)
+	}
+	if warnings > 0 {
+		return warnings, errors, fmt.Sprintf("⚠️ %d warnings", warnings)
+	}
+	return 0, 0, "✅"
 }

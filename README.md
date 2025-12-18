@@ -77,3 +77,15 @@ make test        # テストの実行
 
 * [ODA File Converter](https://www.opendesign.com/guestfiles/oda_file_Converter)
 * [ezdxf](https://github.com/mozman/ezdxf)
+
+## 既知の課題
+
+### ODA FileConverter 互換性
+
+出力したDXFファイルはezdxf auditでは正常に読み込めますが、ODA FileConverterでDWGに変換する際、以下のエラーが発生します：
+
+- `Record name is empty - Ignored` (レイヤーテーブル)
+- `Syntax error or premature end of file`
+- `Null object Id`
+
+原因調査中です。DXFの基本的な構造（HEADER、TABLES、ENTITIES）は正しいですが、ODAがより厳格なDXF構造を期待している可能性があります。
