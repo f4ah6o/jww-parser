@@ -4,6 +4,7 @@
 
 :root {
     color-scheme: light dark;
+    --text: #111827;
     --border: rgba(0, 0, 0, 0.1);
     --muted: rgba(0, 0, 0, 0.6);
     --radius: 14px;
@@ -13,16 +14,21 @@
     --card-bg: #fff;
     --accent: #2f80ed;
     --accent-weak: #e9f2ff;
+    --wash: rgba(0, 0, 0, 0.02);
+    --shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
 }
 
 @media (prefers-color-scheme: dark) {
     :root {
+        --text: #e8ecf6;
         --border: rgba(255, 255, 255, 0.08);
         --muted: rgba(255, 255, 255, 0.7);
         --bg: #0f1117;
         --card-bg: #161921;
         --accent: #5aa5ff;
         --accent-weak: #16263c;
+        --wash: rgba(255, 255, 255, 0.04);
+        --shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
     }
 }
 
@@ -32,7 +38,7 @@ body {
     background: radial-gradient(circle at 15% 20%, rgba(47, 128, 237, 0.08), transparent 25%),
         radial-gradient(circle at 85% 10%, rgba(255, 99, 71, 0.05), transparent 22%),
         var(--bg);
-    color: #111;
+    color: var(--text);
     min-height: 100vh;
     padding: 32px;
 }
@@ -97,7 +103,7 @@ h1 {
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: var(--card-padding);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow);
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -134,7 +140,7 @@ h1 {
     display: inline-flex;
     align-items: center;
     gap: 10px;
-    background: rgba(0, 0, 0, 0.02);
+    background: var(--wash);
     transition: border-color 0.2s ease, background 0.2s ease;
 }
 
@@ -185,7 +191,7 @@ button:not(:disabled):active {
 }
 
 .meta div {
-    background: rgba(0, 0, 0, 0.02);
+    background: var(--wash);
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 10px 12px;
@@ -246,7 +252,7 @@ button:not(:disabled):active {
     padding: 12px;
     border-radius: 12px;
     border: 1px solid var(--border);
-    background: rgba(0, 0, 0, 0.02);
+    background: var(--wash);
     color: inherit;
     font-family: ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
