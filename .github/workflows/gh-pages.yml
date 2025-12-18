@@ -1,4 +1,4 @@
-name: Publish GitHub Pages via PR
+name: Deploy GitHub Pages
 
 on:
   push:
@@ -15,21 +15,20 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
+  pages: write
+  id-token: write
 
 concurrency:
-  group: "pages-pr"
+  group: "pages"
   cancel-in-progress: true
 
 jobs:
-  build-and-propose:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -39,43 +38,18 @@ jobs:
       - name: Build WebAssembly assets
         run: make dist
 
-      - name: Archive build output
-        run: cp -r dist ../pages-dist
-
-      - name: Switch to gh-pages base tree
-        run: |
-          git fetch origin gh-pages || true
-          if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
-            git switch --force-create gh-pages-work origin/gh-pages
-          else
-            git switch --orphan gh-pages-work
-          fi
-
-      - name: Prepare gh-pages branch content
-        run: |
-          shopt -s dotglob
-          for path in *; do
-            if [ "$path" != ".git" ]; then
-              rm -rf "$path"
-            fi
-          done
-          cp -a ../pages-dist/. .
-          touch .nojekyll
-          cat <<'README' > README.md
-          # GitHub Pages artifacts
-          
-          このブランチはGitHub Pagesの公開用成果物のみを含みます。
-          mainブランチの更新時に自動生成されるdistディレクトリの内容を配置しています。
-          README
-
-      - name: Create pull request to update gh-pages
-        uses: peter-evans/create-pull-request@v7
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "chore: update GitHub Pages content"
-          title: "Update GitHub Pages content"
-          body: |
-            Automated PR to refresh the GitHub Pages branch with the latest build from main.
-          base: gh-pages
-          branch: update/gh-pages
-          delete-branch: true
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
