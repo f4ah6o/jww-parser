@@ -1,3 +1,7 @@
 examples/jww/
 dist/
 bin/
+build/
+
+*.skill
+.claude/
