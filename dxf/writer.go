@@ -53,11 +53,11 @@ func EscapeUnicode(s string) string {
 // WriteDocument writes a complete DXF document to the output stream.
 //
 // The DXF file structure consists of the following sections in order:
-//   1. HEADER section - document settings and variables
-//   2. TABLES section - layer, linetype, and text style definitions
-//   3. BLOCKS section - block definitions
-//   4. ENTITIES section - drawing entities
-//   5. EOF marker
+//  1. HEADER section - document settings and variables
+//  2. TABLES section - layer, linetype, and text style definitions
+//  3. BLOCKS section - block definitions
+//  4. ENTITIES section - drawing entities
+//  5. EOF marker
 //
 // This method orchestrates writing all sections in the correct order
 // and with proper DXF formatting.
@@ -148,7 +148,59 @@ func (w *Writer) writeLinetypeTable() error {
 	if err := w.writeGroupCode(5, w.getHandle()); err != nil {
 		return err
 	}
-	if err := w.writeGroupCode(70, 1); err != nil {
+	if err := w.writeGroupCode(70, 3); err != nil { // 3 linetypes: BYLAYER, BYBLOCK, CONTINUOUS
+		return err
+	}
+
+	// BYLAYER linetype (required)
+	if err := w.writeGroupCode(0, "LTYPE"); err != nil {
+		return err
+	}
+	if err := w.writeGroupCode(5, w.getHandle()); err != nil {
+		return err
+	}
+	if err := w.writeGroupCode(2, "BYLAYER"); err != nil {
+		return err
+	}
+	if err := w.writeGroupCode(70, 0); err != nil {
+		return err
+	}
+	if err := w.writeGroupCode(3, ""); err != nil {
+		return err
+	}
+	if err := w.writeGroupCode(72, 65); err != nil {
+		return err
+	}
+	if err := w.writeGroupCode(73, 0); err != nil {
+		return err
+	}
+	if err := w.writeGroupCode(40, 0.0); err != nil {
+		return err
+	}
+
+	// BYBLOCK linetype (required)
+	if err := w.writeGroupCode(0, "LTYPE"); err != nil {
+		return err
+	}
+	if err := w.writeGroupCode(5, w.getHandle()); err != nil {
+		return err
+	}
+	if err := w.writeGroupCode(2, "BYBLOCK"); err != nil {
+		return err
+	}
+	if err := w.writeGroupCode(70, 0); err != nil {
+		return err
+	}
+	if err := w.writeGroupCode(3, ""); err != nil {
+		return err
+	}
+	if err := w.writeGroupCode(72, 65); err != nil {
+		return err
+	}
+	if err := w.writeGroupCode(73, 0); err != nil {
+		return err
+	}
+	if err := w.writeGroupCode(40, 0.0); err != nil {
 		return err
 	}
 
@@ -191,7 +243,27 @@ func (w *Writer) writeLayerTable(doc *Document) error {
 	if err := w.writeGroupCode(5, w.getHandle()); err != nil {
 		return err
 	}
-	if err := w.writeGroupCode(70, len(doc.Layers)); err != nil {
+	if err := w.writeGroupCode(70, len(doc.Layers)+1); err != nil { // +1 for required layer 0
+		return err
+	}
+
+	// Required Layer 0 (must be first and always present)
+	if err := w.writeGroupCode(0, "LAYER"); err != nil {
+		return err
+	}
+	if err := w.writeGroupCode(5, w.getHandle()); err != nil {
+		return err
+	}
+	if err := w.writeGroupCode(2, "0"); err != nil {
+		return err
+	}
+	if err := w.writeGroupCode(70, 0); err != nil {
+		return err
+	}
+	if err := w.writeGroupCode(62, 7); err != nil { // white/black
+		return err
+	}
+	if err := w.writeGroupCode(6, "CONTINUOUS"); err != nil {
 		return err
 	}
 
