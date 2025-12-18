@@ -2,10 +2,14 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strings"
 
 	"github.com/f4ah6o/jww-dxf/dxf"
 	"github.com/f4ah6o/jww-dxf/jww"
@@ -28,6 +32,10 @@ type FileStats struct {
 	DXFLayers   int
 	DXFBlocks   int
 	DXFError    string
+	// ezdxf audit results
+	EzdxfErrors int
+	EzdxfFixes  int
+	EzdxfStatus string
 }
 
 func main() {
@@ -95,6 +103,18 @@ func main() {
 			filepath.Base(s.Name), s.DXFEntities, s.DXFLayers, s.DXFBlocks, status)
 	}
 
+	// Print ezdxf audit results table
+	fmt.Println()
+	fmt.Println("## ezdxf Audit Results")
+	fmt.Println()
+	fmt.Println("| File | Errors | Fixes | Status |")
+	fmt.Println("|------|--------|-------|--------|")
+
+	for _, s := range allStats {
+		fmt.Printf("| `%s` | %d | %d | %s |\n",
+			filepath.Base(s.Name), s.EzdxfErrors, s.EzdxfFixes, s.EzdxfStatus)
+	}
+
 	// Print unknown entities summary
 	unknownMap := make(map[string]int)
 	for _, s := range allStats {
@@ -122,11 +142,15 @@ func main() {
 	successFiles := 0
 	errorFiles := 0
 	dxfSuccessFiles := 0
+	ezdxfPassFiles := 0
 	for _, s := range allStats {
 		if s.Error == "" {
 			successFiles++
 			if s.DXFError == "" {
 				dxfSuccessFiles++
+				if s.EzdxfErrors == 0 {
+					ezdxfPassFiles++
+				}
 			}
 		} else {
 			errorFiles++
@@ -136,10 +160,11 @@ func main() {
 	fmt.Printf("- Successfully parsed: %d\n", successFiles)
 	fmt.Printf("- Parse errors: %d\n", errorFiles)
 	fmt.Printf("- Successfully converted to DXF: %d\n", dxfSuccessFiles)
+	fmt.Printf("- ezdxf audit passed (0 errors): %d\n", ezdxfPassFiles)
 }
 
 func parseFile(path string) FileStats {
-	stats := FileStats{Name: path}
+	stats := FileStats{Name: path, EzdxfStatus: "⏭️ Skipped"}
 
 	f, err := os.Open(path)
 	if err != nil {
@@ -182,5 +207,70 @@ func parseFile(path string) FileStats {
 	stats.DXFLayers = len(dxfDoc.Layers)
 	stats.DXFBlocks = len(dxfDoc.Blocks)
 
+	// Write DXF to temp file and run ezdxf audit
+	tmpFile, err := os.CreateTemp("", "jww-stats-*.dxf")
+	if err != nil {
+		stats.EzdxfStatus = "❌ temp file error"
+		return stats
+	}
+	tmpPath := tmpFile.Name()
+	defer os.Remove(tmpPath)
+
+	dxfStr := dxf.ToString(dxfDoc)
+	if _, err := tmpFile.WriteString(dxfStr); err != nil {
+		tmpFile.Close()
+		stats.EzdxfStatus = "❌ write error"
+		return stats
+	}
+	tmpFile.Close()
+
+	// Run ezdxf audit
+	errors, fixes, status := runEzdxfAudit(tmpPath)
+	stats.EzdxfErrors = errors
+	stats.EzdxfFixes = fixes
+	stats.EzdxfStatus = status
+
 	return stats
+}
+
+// runEzdxfAudit runs ezdxf audit on a DXF file and parses the results.
+func runEzdxfAudit(dxfPath string) (errors, fixes int, status string) {
+	cmd := exec.Command("uvx", "--from", "git+https://github.com/mozman/ezdxf", "ezdxf", "audit", dxfPath)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	output := stdout.String() + stderr.String()
+
+	if err != nil {
+		// Check if it's a "command not found" type error
+		if strings.Contains(err.Error(), "executable file not found") {
+			return 0, 0, "⏭️ ezdxf not available"
+		}
+	}
+
+	// Parse output for errors and fixes
+	// Example: "Found 0 errors, applied 3 fixes" or "No errors found."
+	errorsRe := regexp.MustCompile(`Found (\d+) errors`)
+	fixesRe := regexp.MustCompile(`applied (\d+) fixes`)
+	noErrorsRe := regexp.MustCompile(`No errors found`)
+
+	if noErrorsRe.MatchString(output) {
+		return 0, 0, "✅"
+	}
+
+	if m := errorsRe.FindStringSubmatch(output); len(m) > 1 {
+		fmt.Sscanf(m[1], "%d", &errors)
+	}
+
+	if m := fixesRe.FindStringSubmatch(output); len(m) > 1 {
+		fmt.Sscanf(m[1], "%d", &fixes)
+	}
+
+	if errors == 0 {
+		return errors, fixes, "✅"
+	}
+
+	return errors, fixes, fmt.Sprintf("⚠️ %d errors", errors)
 }
