@@ -97,28 +97,33 @@ func main() {
 
 	wg.Wait()
 
-	// Print markdown table
-	fmt.Println("## Test Data Matrix")
-	fmt.Println()
-	fmt.Println("| File | Version | Line | Arc | Point | Text | Solid | Block | BlockDef | Error |")
-	fmt.Println("|------|---------|------|-----|-------|------|-------|-------|----------|-------|")
-
+	// Build Test Data Matrix rows
+	var testDataRows [][]string
 	for _, s := range allStats {
 		errStr := ""
 		if s.Error != "" {
 			errStr = "❌ " + s.Error
 		}
-		fmt.Printf("| `%s` | %d | %d | %d | %d | %d | %d | %d | %d | %s |\n",
-			filepath.Base(s.Name), s.Version, s.Lines, s.Arcs, s.Points, s.Texts, s.Solids, s.Blocks, s.BlockDefs, errStr)
+		testDataRows = append(testDataRows, []string{
+			"`" + filepath.Base(s.Name) + "`",
+			fmt.Sprintf("%d", s.Version),
+			fmt.Sprintf("%d", s.Lines),
+			fmt.Sprintf("%d", s.Arcs),
+			fmt.Sprintf("%d", s.Points),
+			fmt.Sprintf("%d", s.Texts),
+			fmt.Sprintf("%d", s.Solids),
+			fmt.Sprintf("%d", s.Blocks),
+			fmt.Sprintf("%d", s.BlockDefs),
+			errStr,
+		})
 	}
 
-	// Print DXF conversion results table with JWW comparison
+	fmt.Println("## Test Data Matrix")
 	fmt.Println()
-	fmt.Println("## DXF Conversion Results (Entity Count Comparison)")
-	fmt.Println()
-	fmt.Println("| File | JWW Entities | DXF Entities | Diff | Status |")
-	fmt.Println("|------|--------------|--------------|------|--------|")
+	printTable([]string{"File", "Version", "Line", "Arc", "Point", "Text", "Solid", "Block", "BlockDef", "Error"}, testDataRows)
 
+	// Build DXF Conversion Results rows
+	var dxfRows [][]string
 	for _, s := range allStats {
 		status := "✅"
 		if s.DXFError != "" {
@@ -126,54 +131,75 @@ func main() {
 		} else if s.Error != "" {
 			status = "⏭️ Parse failed"
 		}
-		// Calculate JWW total entities (excluding BlockDefs which are definitions, not instances)
 		jwwTotal := s.Lines + s.Arcs + s.Points + s.Texts + s.Solids + s.Blocks
 		diff := s.DXFEntities - jwwTotal
 		diffStr := fmt.Sprintf("%+d", diff)
 		if diff == 0 {
 			diffStr = "0 ✅"
 		}
-		fmt.Printf("| `%s` | %d | %d | %s | %s |\n",
-			filepath.Base(s.Name), jwwTotal, s.DXFEntities, diffStr, status)
+		dxfRows = append(dxfRows, []string{
+			"`" + filepath.Base(s.Name) + "`",
+			fmt.Sprintf("%d", jwwTotal),
+			fmt.Sprintf("%d", s.DXFEntities),
+			diffStr,
+			status,
+		})
 	}
 
-	// Print ezdxf audit results table
+	fmt.Println()
+	fmt.Println("## DXF Conversion Results (Entity Count Comparison)")
+	fmt.Println()
+	printTable([]string{"File", "JWW Entities", "DXF Entities", "Diff", "Status"}, dxfRows)
+
+	// Build ezdxf Audit Results rows
+	var auditRows [][]string
+	for _, s := range allStats {
+		auditRows = append(auditRows, []string{
+			"`" + filepath.Base(s.Name) + "`",
+			fmt.Sprintf("%d", s.EzdxfErrors),
+			fmt.Sprintf("%d", s.EzdxfFixes),
+			s.EzdxfStatus,
+		})
+	}
+
 	fmt.Println()
 	fmt.Println("## ezdxf Audit Results")
 	fmt.Println()
-	fmt.Println("| File | Errors | Fixes | Status |")
-	fmt.Println("|------|--------|-------|--------|")
+	printTable([]string{"File", "Errors", "Fixes", "Status"}, auditRows)
 
+	// Build ezdxf Info Results rows
+	var infoRows [][]string
 	for _, s := range allStats {
-		fmt.Printf("| `%s` | %d | %d | %s |\n",
-			filepath.Base(s.Name), s.EzdxfErrors, s.EzdxfFixes, s.EzdxfStatus)
+		infoRows = append(infoRows, []string{
+			"`" + filepath.Base(s.Name) + "`",
+			fmt.Sprintf("%d", s.EzdxfInfoEntities),
+			fmt.Sprintf("%d", s.EzdxfInfoLayers),
+			fmt.Sprintf("%d", s.EzdxfInfoBlocks),
+			s.EzdxfInfoStatus,
+		})
 	}
 
-	// Print ezdxf info results table (DXF file validation via ezdxf)
 	fmt.Println()
 	fmt.Println("## ezdxf Info Results (DXF File Statistics)")
 	fmt.Println()
-	fmt.Println("| File | Entities | Layers | Blocks | Status |")
-	fmt.Println("|------|----------|--------|--------|--------|")
-
-	for _, s := range allStats {
-		fmt.Printf("| `%s` | %d | %d | %d | %s |\n",
-			filepath.Base(s.Name), s.EzdxfInfoEntities, s.EzdxfInfoLayers,
-			s.EzdxfInfoBlocks, s.EzdxfInfoStatus)
-	}
+	printTable([]string{"File", "Entities", "Layers", "Blocks", "Status"}, infoRows)
 
 	// Print ODA FileConverter results table (only if --oda flag is set)
 	if *odaFlag {
+		var odaRows [][]string
+		for _, s := range allStats {
+			odaRows = append(odaRows, []string{
+				"`" + filepath.Base(s.Name) + "`",
+				fmt.Sprintf("%d", s.ODAWarnings),
+				fmt.Sprintf("%d", s.ODAErrors),
+				s.ODAStatus,
+			})
+		}
+
 		fmt.Println()
 		fmt.Println("## ODA FileConverter Results")
 		fmt.Println()
-		fmt.Println("| File | Warnings | Errors | Status |")
-		fmt.Println("|------|----------|--------|--------|")
-
-		for _, s := range allStats {
-			fmt.Printf("| `%s` | %d | %d | %s |\n",
-				filepath.Base(s.Name), s.ODAWarnings, s.ODAErrors, s.ODAStatus)
-		}
+		printTable([]string{"File", "Warnings", "Errors", "Status"}, odaRows)
 	}
 
 	// Print unknown entities summary
@@ -476,4 +502,76 @@ func runEzdxfInfo(dxfPath string, stats *FileStats) {
 	}
 
 	stats.EzdxfInfoStatus = "✅"
+}
+
+// printTable prints a markdown table with aligned columns.
+// headers is a slice of column header strings.
+// rows is a slice of row data, where each row is a slice of cell strings.
+func printTable(headers []string, rows [][]string) {
+	// Calculate column widths (using rune width for Unicode support)
+	widths := make([]int, len(headers))
+	for i, h := range headers {
+		widths[i] = runeWidth(h)
+	}
+	for _, row := range rows {
+		for i, cell := range row {
+			if i < len(widths) {
+				w := runeWidth(cell)
+				if w > widths[i] {
+					widths[i] = w
+				}
+			}
+		}
+	}
+
+	// Print header
+	fmt.Print("|")
+	for i, h := range headers {
+		fmt.Printf(" %-*s |", widths[i]+runeWidth(h)-len(h), h)
+	}
+	fmt.Println()
+
+	// Print separator
+	fmt.Print("|")
+	for _, w := range widths {
+		fmt.Print(strings.Repeat("-", w+2) + "|")
+	}
+	fmt.Println()
+
+	// Print rows
+	for _, row := range rows {
+		fmt.Print("|")
+		for i, cell := range row {
+			if i < len(widths) {
+				// Pad with spaces accounting for rune width
+				padding := widths[i] - runeWidth(cell) + len(cell)
+				fmt.Printf(" %-*s |", padding, cell)
+			}
+		}
+		fmt.Println()
+	}
+}
+
+// runeWidth returns the display width of a string, accounting for wide characters.
+func runeWidth(s string) int {
+	width := 0
+	for _, r := range s {
+		// Wide characters (CJK, emoji, etc.) take 2 columns
+		if r >= 0x1100 && (r <= 0x115F || // Hangul Jamo
+			r == 0x2329 || r == 0x232A || // Angle brackets
+			(r >= 0x2E80 && r <= 0xA4CF && r != 0x303F) || // CJK
+			(r >= 0xAC00 && r <= 0xD7A3) || // Hangul Syllables
+			(r >= 0xF900 && r <= 0xFAFF) || // CJK Compatibility Ideographs
+			(r >= 0xFE10 && r <= 0xFE19) || // Vertical forms
+			(r >= 0xFE30 && r <= 0xFE6F) || // CJK Compatibility Forms
+			(r >= 0xFF00 && r <= 0xFF60) || // Fullwidth Forms
+			(r >= 0xFFE0 && r <= 0xFFE6) || // Fullwidth Forms
+			(r >= 0x1F300 && r <= 0x1F9FF) || // Emoji
+			(r >= 0x20000 && r <= 0x2FFFF)) { // CJK Extension B+
+			width += 2
+		} else {
+			width += 1
+		}
+	}
+	return width
 }

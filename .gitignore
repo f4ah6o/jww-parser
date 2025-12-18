@@ -2,7 +2,7 @@ examples/jww/
 dist/
 bin/
 build/
-jww-stats
+/jww-stats
 
 *.skill
 .claude/
