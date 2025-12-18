@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"text/tabwriter"
 
 	"github.com/f4ah6o/jww-dxf/dxf"
 	"github.com/f4ah6o/jww-dxf/jww"
@@ -504,74 +505,34 @@ func runEzdxfInfo(dxfPath string, stats *FileStats) {
 	stats.EzdxfInfoStatus = "✅"
 }
 
-// printTable prints a markdown table with aligned columns.
+// printTable prints a markdown table with aligned columns using tabwriter.
 // headers is a slice of column header strings.
 // rows is a slice of row data, where each row is a slice of cell strings.
 func printTable(headers []string, rows [][]string) {
-	// Calculate column widths (using rune width for Unicode support)
-	widths := make([]int, len(headers))
-	for i, h := range headers {
-		widths[i] = runeWidth(h)
-	}
-	for _, row := range rows {
-		for i, cell := range row {
-			if i < len(widths) {
-				w := runeWidth(cell)
-				if w > widths[i] {
-					widths[i] = w
-				}
-			}
-		}
-	}
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
 
 	// Print header
-	fmt.Print("|")
-	for i, h := range headers {
-		fmt.Printf(" %-*s |", widths[i]+runeWidth(h)-len(h), h)
+	fmt.Fprint(w, "|")
+	for _, h := range headers {
+		fmt.Fprintf(w, " %s\t|", h)
 	}
-	fmt.Println()
+	fmt.Fprintln(w)
 
 	// Print separator
-	fmt.Print("|")
-	for _, w := range widths {
-		fmt.Print(strings.Repeat("-", w+2) + "|")
+	fmt.Fprint(w, "|")
+	for range headers {
+		fmt.Fprint(w, "---\t|")
 	}
-	fmt.Println()
+	fmt.Fprintln(w)
 
 	// Print rows
 	for _, row := range rows {
-		fmt.Print("|")
-		for i, cell := range row {
-			if i < len(widths) {
-				// Pad with spaces accounting for rune width
-				padding := widths[i] - runeWidth(cell) + len(cell)
-				fmt.Printf(" %-*s |", padding, cell)
-			}
+		fmt.Fprint(w, "|")
+		for _, cell := range row {
+			fmt.Fprintf(w, " %s\t|", cell)
 		}
-		fmt.Println()
+		fmt.Fprintln(w)
 	}
-}
 
-// runeWidth returns the display width of a string, accounting for wide characters.
-func runeWidth(s string) int {
-	width := 0
-	for _, r := range s {
-		// Wide characters (CJK, emoji, etc.) take 2 columns
-		if r >= 0x1100 && (r <= 0x115F || // Hangul Jamo
-			r == 0x2329 || r == 0x232A || // Angle brackets
-			(r >= 0x2E80 && r <= 0xA4CF && r != 0x303F) || // CJK
-			(r >= 0xAC00 && r <= 0xD7A3) || // Hangul Syllables
-			(r >= 0xF900 && r <= 0xFAFF) || // CJK Compatibility Ideographs
-			(r >= 0xFE10 && r <= 0xFE19) || // Vertical forms
-			(r >= 0xFE30 && r <= 0xFE6F) || // CJK Compatibility Forms
-			(r >= 0xFF00 && r <= 0xFF60) || // Fullwidth Forms
-			(r >= 0xFFE0 && r <= 0xFFE6) || // Fullwidth Forms
-			(r >= 0x1F300 && r <= 0x1F9FF) || // Emoji
-			(r >= 0x20000 && r <= 0x2FFFF)) { // CJK Extension B+
-			width += 2
-		} else {
-			width += 1
-		}
-	}
-	return width
+	w.Flush()
 }
