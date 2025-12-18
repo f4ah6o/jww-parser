@@ -8,3 +8,4 @@ build/
 .claude/
 examples/converted/
 examples/dwg/
+examples/dxf_librecad/
