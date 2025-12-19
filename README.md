@@ -38,6 +38,8 @@ DXF 形式で出力:
 
 ### ライブラリとしての利用
 
+#### JWW ファイルの解析
+
 ```go
 import (
     "github.com/f4ah6o/jww-parser/jww"
@@ -54,6 +56,89 @@ func main() {
     }
     // doc を使用してデータを処理
 }
+```
+
+#### DXF エンティティの作成と操作
+
+このライブラリは、Go idiomaticな方法でDXFエンティティを作成・操作できる豊富なAPIを提供しています。
+
+##### エンティティビルダー（Functional Options パターン）
+
+```go
+import "github.com/f4ah6o/jww-parser/dxf"
+
+// 線分の作成
+line := dxf.NewLine(0, 0, 100, 100,
+    dxf.WithLineLayer("MyLayer"),
+    dxf.WithLineColor(1),
+    dxf.WithLineType("DASHED"))
+
+// 円の作成
+circle := dxf.NewCircle(50, 50, 25,
+    dxf.WithCircleLayer("MyLayer"),
+    dxf.WithCircleColor(2))
+
+// テキストの作成
+text := dxf.NewText(10, 10, "Hello World",
+    dxf.WithTextLayer("MyLayer"),
+    dxf.WithTextHeight(5.0),
+    dxf.WithTextRotation(45))
+```
+
+##### エンティティの変換操作
+
+```go
+// 平行移動
+movedLine := line.Translate(50, 50)
+
+// 回転（指定した中心点で角度を指定）
+rotatedLine := line.Rotate(45, 0, 0)
+
+// 拡大縮小
+scaledCircle := circle.Scale(2.0)
+```
+
+##### エンティティの情報取得
+
+```go
+// 線分の長さ
+length := line.Length()
+
+// 角度（度）
+angle := line.Angle()
+
+// 境界ボックス
+minX, minY, maxX, maxY := line.BoundingBox()
+
+// 円の面積
+area := circle.Area()
+
+// 円周
+circumference := circle.Circumference()
+```
+
+##### Document の Fluent API
+
+```go
+// メソッドチェーンでドキュメントを構築
+doc := dxf.NewDocument().
+    AddLayer("Layer1", 1, "CONTINUOUS").
+    AddLayer("Layer2", 2, "DASHED").
+    AddLine(0, 0, 100, 100, dxf.WithLineLayer("Layer1")).
+    AddCircle(50, 50, 25, dxf.WithCircleLayer("Layer2")).
+    AddText(10, 10, "Hello", dxf.WithTextHeight(5.0))
+
+// ドキュメント全体の境界ボックス
+minX, minY, maxX, maxY := doc.BoundingBox()
+
+// レイヤーでフィルタリング
+layer1Entities := doc.FilterByLayer("Layer1")
+
+// エンティティタイプ別カウント
+counts := doc.CountByType() // {"LINE": 1, "CIRCLE": 1, "TEXT": 1}
+
+// DXFファイルとして出力
+dxfString := dxf.ToString(doc)
 ```
 
 ## Conversion Statistics
