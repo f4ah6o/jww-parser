@@ -11,7 +11,7 @@ build-stats: clean-bin
 build-wasm: clean-dist
 	rm -rf dist/
 	mkdir -p dist
-	GOOS=js GOARCH=wasm go build -o dist/jww-parser.wasm ./wasm/
+	GOOS=js GOARCH=wasm go build -ldflags="-s -w" -o dist/jww-parser.wasm ./wasm/
 
 # Copy wasm_exec.js from Go installation
 copy-wasm-exec:
