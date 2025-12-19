@@ -37,12 +37,12 @@
   "license": "AGPL-3.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/f4ah6o/jww-dxf.git"
+    "url": "git+https://github.com/f4ah6o/jww-parser.git"
   },
   "bugs": {
-    "url": "https://github.com/f4ah6o/jww-dxf/issues"
+    "url": "https://github.com/f4ah6o/jww-parser/issues"
   },
-  "homepage": "https://github.com/f4ah6o/jww-dxf#readme",
+  "homepage": "https://github.com/f4ah6o/jww-parser#readme",
   "devDependencies": {
     "@types/node": "^20.0.0",
     "tsup": "^8.0.0",
