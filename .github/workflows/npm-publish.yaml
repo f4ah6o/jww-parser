@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write  # Required for OIDC
+  id-token: write # Required for OIDC
   contents: read
 
 jobs:
@@ -33,10 +33,19 @@ jobs:
         working-directory: npm
         run: npm ci
 
+      - name: Update package version from tag
+        working-directory: npm
+        run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"  # Remove 'v' prefix
+          npm version --no-git-tag-version "$VERSION"
+
       - name: Build package
         working-directory: npm
         run: npm run build
 
       - name: Publish package
         working-directory: npm
-        run: npm publish
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
