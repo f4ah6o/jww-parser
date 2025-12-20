@@ -179,12 +179,17 @@ func convertEntity(e jww.Entity, doc *jww.Document) Entity {
 		}
 
 	case *jww.Text:
+		// Use default height if SizeY is not set or too small
+		height := v.SizeY
+		if height <= 0 {
+			height = 2.5 // Default text height (same as NewText builder)
+		}
 		return &Text{
 			Layer:    layerName,
 			Color:    color,
 			X:        v.StartX,
 			Y:        v.StartY,
-			Height:   v.SizeY,
+			Height:   height,
 			Rotation: v.Angle,
 			Content:  v.Content,
 			Style:    "STANDARD",
