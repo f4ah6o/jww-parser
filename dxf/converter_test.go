@@ -247,6 +247,38 @@ func TestConvertText(t *testing.T) {
 	}
 }
 
+func TestConvertTextWithZeroHeight(t *testing.T) {
+	txt := &jww.Text{
+		EntityBase: jww.EntityBase{
+			PenColor:   1,
+			Layer:      0,
+			LayerGroup: 0,
+		},
+		StartX:  10,
+		StartY:  20,
+		SizeY:   0, // Zero height - should use default
+		Content: "Test",
+	}
+
+	doc := createTestDocument()
+	doc.Entities = []jww.Entity{txt}
+
+	result := ConvertDocument(doc)
+
+	if len(result.Entities) != 1 {
+		t.Fatalf("expected 1 entity, got %d", len(result.Entities))
+	}
+
+	dxfText, ok := result.Entities[0].(*Text)
+	if !ok {
+		t.Fatalf("expected *Text, got %T", result.Entities[0])
+	}
+
+	if dxfText.Height != 2.5 {
+		t.Errorf("height: got %v, want 2.5 (default)", dxfText.Height)
+	}
+}
+
 func TestConvertSolid(t *testing.T) {
 	solid := &jww.Solid{
 		EntityBase: jww.EntityBase{
