@@ -6,7 +6,10 @@
     "strict": true,
     "esModuleInterop": true,
     "types": ["vite/client"],
-    "allowJs": false
+    "allowJs": false,
+    "paths": {
+      "three": ["./src/three-compat.ts"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

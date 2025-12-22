@@ -38,6 +38,9 @@ const WASM_PATH = new URL(
   window.location.href
 ).toString();
 
+const NOTO_SANS_JP_WOFF_URL =
+  "https://fonts.gstatic.com/s/notosansjp/v52/-F6ofjtqLzI2JPCgQBnw7HFQogg.woff2";
+
 const elements = {
   fileInput: document.getElementById("fileInput") as HTMLInputElement,
   fileLabel: document.getElementById("fileLabel") as HTMLSpanElement,
@@ -87,16 +90,20 @@ function updateConvertButton(): void {
   elements.convertBtn.disabled = !wasmReady || !selectedFile;
 }
 
-function loadFont(): Promise<Font> {
-  const fontUrl = new URL(
-    `${import.meta.env.BASE_URL}fonts/NotoSansJP-Regular.ttf`,
-    window.location.href
-  ).toString();
-
+async function loadFont(): Promise<Font> {
   const ttfLoader = new TTFLoader();
   const fontLoader = new FontLoader();
 
-  return ttfLoader.loadAsync(fontUrl).then((fontData) => fontLoader.parse(fontData));
+  const response = await fetch(NOTO_SANS_JP_WOFF_URL);
+  if (!response.ok) {
+    throw new Error(
+      `Failed to load font: ${response.status} ${response.statusText}`
+    );
+  }
+
+  const fontBuffer = await response.arrayBuffer();
+  const ttfData = ttfLoader.parse(fontBuffer);
+  return fontLoader.parse(ttfData);
 }
 
 async function loadWasm(): Promise<void> {
