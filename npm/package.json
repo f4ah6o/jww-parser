@@ -17,7 +17,7 @@
     "wasm"
   ],
   "scripts": {
-    "build:wasm": "make -C .. build-wasm copy-wasm-exec && mkdir -p wasm && cp ../dist/jww-parser.wasm ../dist/wasm_exec.js wasm/",
+    "build:wasm": "make -C .. build-wasm copy-wasm-exec && mkdir -p wasm && rm -f wasm/wasm_exec.js wasm/jww-parser.wasm && cp ../dist/jww-parser.wasm ../dist/wasm_exec.js wasm/",
     "build:js": "tsc",
     "build": "npm run build:wasm && npm run build:js",
     "prepublishOnly": "npm run build"
