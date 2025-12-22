@@ -11,6 +11,7 @@ func TestConvertLine(t *testing.T) {
 	line := &jww.Line{
 		EntityBase: jww.EntityBase{
 			PenColor:   1,
+			PenStyle:   3,
 			Layer:      0,
 			LayerGroup: 0,
 		},
@@ -39,6 +40,9 @@ func TestConvertLine(t *testing.T) {
 	}
 	if dxfLine.X2 != 100 || dxfLine.Y2 != 100 {
 		t.Errorf("end: got (%v, %v), want (100, 100)", dxfLine.X2, dxfLine.Y2)
+	}
+	if dxfLine.LineType != "DASHDOT" {
+		t.Errorf("linetype: got %s, want DASHDOT", dxfLine.LineType)
 	}
 }
 
@@ -116,6 +120,31 @@ func TestConvertArc(t *testing.T) {
 	}
 	if math.Abs(dxfArc.EndAngle-90) > 0.001 {
 		t.Errorf("endAngle: got %v, want 90", dxfArc.EndAngle)
+	}
+}
+
+func TestMapLineType(t *testing.T) {
+	cases := []struct {
+		penStyle byte
+		expected string
+	}{
+		{0, "CONTINUOUS"},
+		{1, "CONTINUOUS"},
+		{2, "DASHED"},
+		{3, "DASHDOT"},
+		{4, "CENTER"},
+		{5, "DOT"},
+		{6, "DASHEDX2"},
+		{7, "DASHDOTX2"},
+		{8, "CENTERX2"},
+		{9, "DOTX2"},
+		{42, "CONTINUOUS"},
+	}
+
+	for _, c := range cases {
+		if got := mapLineType(c.penStyle); got != c.expected {
+			t.Fatalf("penStyle %d: got %s, want %s", c.penStyle, got, c.expected)
+		}
 	}
 }
 

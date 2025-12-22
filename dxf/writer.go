@@ -3,6 +3,7 @@ package dxf
 import (
 	"fmt"
 	"io"
+	"math"
 	"strings"
 	"unicode"
 )
@@ -179,6 +180,26 @@ func (w *Writer) writeTables(doc *Document) error {
 }
 
 func (w *Writer) writeLinetypeTable() error {
+	type linetypeDef struct {
+		name   string
+		desc   string
+		values []float64
+	}
+
+	linetypes := []linetypeDef{
+		{"BYLAYER", "", nil},
+		{"BYBLOCK", "", nil},
+		{"CONTINUOUS", "Solid line", nil},
+		{"DASHED", "Dashed line", []float64{0.6, -0.3}},
+		{"DASHEDX2", "Dashed line x2", []float64{1.2, -0.6}},
+		{"DASHDOT", "Dash dot", []float64{0.6, -0.2, 0.1, -0.2}},
+		{"DASHDOTX2", "Dash dot x2", []float64{1.2, -0.4, 0.2, -0.4}},
+		{"CENTER", "Center line", []float64{1.25, -0.25, 0.25, -0.25}},
+		{"CENTERX2", "Center line x2", []float64{2.5, -0.5, 0.5, -0.5}},
+		{"DOT", "Dotted line", []float64{0.1, -0.1}},
+		{"DOTX2", "Dotted line x2", []float64{0.2, -0.2}},
+	}
+
 	if err := w.writeGroupCode(0, "TABLE"); err != nil {
 		return err
 	}
@@ -188,86 +209,45 @@ func (w *Writer) writeLinetypeTable() error {
 	if err := w.writeGroupCode(5, w.getHandle()); err != nil {
 		return err
 	}
-	if err := w.writeGroupCode(70, 3); err != nil { // 3 linetypes: BYLAYER, BYBLOCK, CONTINUOUS
+	if err := w.writeGroupCode(70, len(linetypes)); err != nil {
 		return err
 	}
 
-	// BYLAYER linetype (required)
-	if err := w.writeGroupCode(0, "LTYPE"); err != nil {
-		return err
-	}
-	if err := w.writeGroupCode(5, w.getHandle()); err != nil {
-		return err
-	}
-	if err := w.writeGroupCode(2, "BYLAYER"); err != nil {
-		return err
-	}
-	if err := w.writeGroupCode(70, 0); err != nil {
-		return err
-	}
-	if err := w.writeGroupCode(3, ""); err != nil {
-		return err
-	}
-	if err := w.writeGroupCode(72, 65); err != nil {
-		return err
-	}
-	if err := w.writeGroupCode(73, 0); err != nil {
-		return err
-	}
-	if err := w.writeGroupCode(40, 0.0); err != nil {
-		return err
-	}
-
-	// BYBLOCK linetype (required)
-	if err := w.writeGroupCode(0, "LTYPE"); err != nil {
-		return err
-	}
-	if err := w.writeGroupCode(5, w.getHandle()); err != nil {
-		return err
-	}
-	if err := w.writeGroupCode(2, "BYBLOCK"); err != nil {
-		return err
-	}
-	if err := w.writeGroupCode(70, 0); err != nil {
-		return err
-	}
-	if err := w.writeGroupCode(3, ""); err != nil {
-		return err
-	}
-	if err := w.writeGroupCode(72, 65); err != nil {
-		return err
-	}
-	if err := w.writeGroupCode(73, 0); err != nil {
-		return err
-	}
-	if err := w.writeGroupCode(40, 0.0); err != nil {
-		return err
-	}
-
-	// CONTINUOUS linetype
-	if err := w.writeGroupCode(0, "LTYPE"); err != nil {
-		return err
-	}
-	if err := w.writeGroupCode(5, w.getHandle()); err != nil {
-		return err
-	}
-	if err := w.writeGroupCode(2, "CONTINUOUS"); err != nil {
-		return err
-	}
-	if err := w.writeGroupCode(70, 0); err != nil {
-		return err
-	}
-	if err := w.writeGroupCode(3, "Solid line"); err != nil {
-		return err
-	}
-	if err := w.writeGroupCode(72, 65); err != nil {
-		return err
-	}
-	if err := w.writeGroupCode(73, 0); err != nil {
-		return err
-	}
-	if err := w.writeGroupCode(40, 0.0); err != nil {
-		return err
+	for _, lt := range linetypes {
+		if err := w.writeGroupCode(0, "LTYPE"); err != nil {
+			return err
+		}
+		if err := w.writeGroupCode(5, w.getHandle()); err != nil {
+			return err
+		}
+		if err := w.writeGroupCode(2, lt.name); err != nil {
+			return err
+		}
+		if err := w.writeGroupCode(70, 0); err != nil {
+			return err
+		}
+		if err := w.writeGroupCode(3, lt.desc); err != nil {
+			return err
+		}
+		if err := w.writeGroupCode(72, 65); err != nil {
+			return err
+		}
+		segmentCount := len(lt.values)
+		if err := w.writeGroupCode(73, segmentCount); err != nil {
+			return err
+		}
+		patternLength := 0.0
+		for _, v := range lt.values {
+			patternLength += math.Abs(v)
+		}
+		if err := w.writeGroupCode(40, patternLength); err != nil {
+			return err
+		}
+		for _, v := range lt.values {
+			if err := w.writeGroupCode(49, v); err != nil {
+				return err
+			}
+		}
 	}
 
 	return w.writeGroupCode(0, "ENDTAB")

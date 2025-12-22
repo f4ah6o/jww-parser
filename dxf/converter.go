@@ -92,27 +92,30 @@ func convertEntity(e jww.Entity, doc *jww.Document) Entity {
 	base := e.Base()
 	layerName := getLayerName(doc, base.LayerGroup, base.Layer)
 	color := mapColor(base.PenColor)
+	lineType := mapLineType(base.PenStyle)
 
 	switch v := e.(type) {
 	case *jww.Line:
 		return &Line{
-			Layer: layerName,
-			Color: color,
-			X1:    v.StartX,
-			Y1:    v.StartY,
-			X2:    v.EndX,
-			Y2:    v.EndY,
+			Layer:    layerName,
+			Color:    color,
+			LineType: lineType,
+			X1:       v.StartX,
+			Y1:       v.StartY,
+			X2:       v.EndX,
+			Y2:       v.EndY,
 		}
 
 	case *jww.Arc:
 		if v.IsFullCircle && v.Flatness == 1.0 {
 			// Full circle
 			return &Circle{
-				Layer:   layerName,
-				Color:   color,
-				CenterX: v.CenterX,
-				CenterY: v.CenterY,
-				Radius:  v.Radius,
+				Layer:    layerName,
+				Color:    color,
+				LineType: lineType,
+				CenterX:  v.CenterX,
+				CenterY:  v.CenterY,
+				Radius:   v.Radius,
 			}
 		} else if v.Flatness != 1.0 {
 			// Ellipse or elliptical arc
@@ -143,6 +146,7 @@ func convertEntity(e jww.Entity, doc *jww.Document) Entity {
 			return &Ellipse{
 				Layer:      layerName,
 				Color:      color,
+				LineType:   lineType,
 				CenterX:    v.CenterX,
 				CenterY:    v.CenterY,
 				MajorAxisX: majorAxisX,
@@ -159,6 +163,7 @@ func convertEntity(e jww.Entity, doc *jww.Document) Entity {
 			return &Arc{
 				Layer:      layerName,
 				Color:      color,
+				LineType:   lineType,
 				CenterX:    v.CenterX,
 				CenterY:    v.CenterY,
 				Radius:     v.Radius,
@@ -172,10 +177,11 @@ func convertEntity(e jww.Entity, doc *jww.Document) Entity {
 			return nil // Skip temporary points
 		}
 		return &Point{
-			Layer: layerName,
-			Color: color,
-			X:     v.X,
-			Y:     v.Y,
+			Layer:    layerName,
+			Color:    color,
+			LineType: lineType,
+			X:        v.X,
+			Y:        v.Y,
 		}
 
 	case *jww.Text:
@@ -187,6 +193,7 @@ func convertEntity(e jww.Entity, doc *jww.Document) Entity {
 		return &Text{
 			Layer:    layerName,
 			Color:    color,
+			LineType: lineType,
 			X:        v.StartX,
 			Y:        v.StartY,
 			Height:   height,
@@ -197,16 +204,17 @@ func convertEntity(e jww.Entity, doc *jww.Document) Entity {
 
 	case *jww.Solid:
 		return &Solid{
-			Layer: layerName,
-			Color: color,
-			X1:    v.Point1X,
-			Y1:    v.Point1Y,
-			X2:    v.Point2X,
-			Y2:    v.Point2Y,
-			X3:    v.Point3X,
-			Y3:    v.Point3Y,
-			X4:    v.Point4X,
-			Y4:    v.Point4Y,
+			Layer:    layerName,
+			Color:    color,
+			LineType: lineType,
+			X1:       v.Point1X,
+			Y1:       v.Point1Y,
+			X2:       v.Point2X,
+			Y2:       v.Point2Y,
+			X3:       v.Point3X,
+			Y3:       v.Point3Y,
+			X4:       v.Point4X,
+			Y4:       v.Point4Y,
 		}
 
 	case *jww.Block:
@@ -214,6 +222,7 @@ func convertEntity(e jww.Entity, doc *jww.Document) Entity {
 		return &Insert{
 			Layer:     layerName,
 			Color:     color,
+			LineType:  lineType,
 			BlockName: blockName,
 			X:         v.RefX,
 			Y:         v.RefY,
@@ -329,6 +338,42 @@ func mapColor(jwwColor uint16) int {
 			return int(jwwColor - 100 + 10)
 		}
 		return int(jwwColor)
+	}
+}
+
+// mapLineType maps JWW pen style numbers to DXF linetype names.
+//
+// JWW uses numeric line types for common patterns:
+//   - 1: continuous (実線)
+//   - 2: dashed (破線)
+//   - 3: dash-dot (一点鎖線)
+//   - 4: center line style (中心線)
+//   - 5: dotted (点線)
+//   - 6-9: double-length variants of 2-5
+//
+// Extended values and unknown styles fall back to CONTINUOUS.
+func mapLineType(penStyle byte) string {
+	switch penStyle {
+	case 0, 1:
+		return "CONTINUOUS"
+	case 2:
+		return "DASHED"
+	case 3:
+		return "DASHDOT"
+	case 4:
+		return "CENTER"
+	case 5:
+		return "DOT"
+	case 6:
+		return "DASHEDX2"
+	case 7:
+		return "DASHDOTX2"
+	case 8:
+		return "CENTERX2"
+	case 9:
+		return "DOTX2"
+	default:
+		return "CONTINUOUS"
 	}
 }
 
