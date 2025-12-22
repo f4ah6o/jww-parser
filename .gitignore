@@ -3,6 +3,9 @@ dist/
 bin/
 build/
 /jww-stats
+node_modules/
+wasm/node_modules/
+wasm/dist/
 
 *.skill
 .claude/*
