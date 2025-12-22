@@ -87,14 +87,14 @@ type Line struct {
 	// Color is the ACI color number (0 = BYLAYER, 1-255 = specific colors).
 	Color int
 
+	// LineType specifies the line pattern (e.g., "CONTINUOUS", "DASHED").
+	LineType string
+
 	// X1, Y1 are the coordinates of the line's start point.
 	X1, Y1 float64
 
 	// X2, Y2 are the coordinates of the line's end point.
 	X2, Y2 float64
-
-	// LineType specifies the line pattern (e.g., "CONTINUOUS", "DASHED").
-	LineType string
 }
 
 // EntityType returns "LINE".
@@ -106,6 +106,7 @@ func (l *Line) GroupCodes() []GroupCode {
 		{0, "LINE"},
 		{8, l.Layer},
 		{62, l.Color},
+		{6, l.LineType},
 		{10, l.X1},
 		{20, l.Y1},
 		{30, 0.0},
@@ -124,6 +125,9 @@ type Circle struct {
 	// Color is the ACI color number (0 = BYLAYER).
 	Color int
 
+	// LineType specifies the line pattern for the circle outline.
+	LineType string
+
 	// CenterX, CenterY are the coordinates of the circle's center point.
 	CenterX float64
 	CenterY float64
@@ -141,6 +145,7 @@ func (c *Circle) GroupCodes() []GroupCode {
 		{0, "CIRCLE"},
 		{8, c.Layer},
 		{62, c.Color},
+		{6, c.LineType},
 		{10, c.CenterX},
 		{20, c.CenterY},
 		{30, 0.0},
@@ -156,6 +161,9 @@ type Arc struct {
 
 	// Color is the ACI color number (0 = BYLAYER).
 	Color int
+
+	// LineType specifies the line pattern for the arc.
+	LineType string
 
 	// CenterX, CenterY are the coordinates of the arc's center point.
 	CenterX float64
@@ -179,6 +187,7 @@ func (a *Arc) GroupCodes() []GroupCode {
 		{0, "ARC"},
 		{8, a.Layer},
 		{62, a.Color},
+		{6, a.LineType},
 		{10, a.CenterX},
 		{20, a.CenterY},
 		{30, 0.0},
@@ -196,6 +205,9 @@ type Ellipse struct {
 
 	// Color is the ACI color number (0 = BYLAYER).
 	Color int
+
+	// LineType specifies the line pattern for the ellipse.
+	LineType string
 
 	// CenterX, CenterY are the coordinates of the ellipse's center point.
 	CenterX float64
@@ -223,6 +235,7 @@ func (e *Ellipse) GroupCodes() []GroupCode {
 		{0, "ELLIPSE"},
 		{8, e.Layer},
 		{62, e.Color},
+		{6, e.LineType},
 		{10, e.CenterX},
 		{20, e.CenterY},
 		{30, 0.0},
@@ -244,6 +257,9 @@ type Point struct {
 	// Color is the ACI color number (0 = BYLAYER).
 	Color int
 
+	// LineType specifies the line pattern for the point marker.
+	LineType string
+
 	// X, Y are the coordinates of the point.
 	X, Y float64
 }
@@ -257,6 +273,7 @@ func (p *Point) GroupCodes() []GroupCode {
 		{0, "POINT"},
 		{8, p.Layer},
 		{62, p.Color},
+		{6, p.LineType},
 		{10, p.X},
 		{20, p.Y},
 		{30, 0.0},
@@ -271,6 +288,9 @@ type Text struct {
 
 	// Color is the ACI color number (0 = BYLAYER).
 	Color int
+
+	// LineType specifies the line pattern applied to the text entity.
+	LineType string
 
 	// X, Y are the coordinates of the text insertion point.
 	X, Y float64
@@ -296,6 +316,7 @@ func (t *Text) GroupCodes() []GroupCode {
 		{0, "TEXT"},
 		{8, EscapeUnicode(t.Layer)},
 		{62, t.Color},
+		{6, t.LineType},
 		{10, t.X},
 		{20, t.Y},
 		{30, 0.0},
@@ -320,6 +341,9 @@ type Solid struct {
 	// Color is the ACI color number (0 = BYLAYER).
 	Color int
 
+	// LineType specifies the line pattern applied to the solid's outline.
+	LineType string
+
 	// X1, Y1 are the coordinates of the first corner point.
 	X1, Y1 float64
 
@@ -342,6 +366,7 @@ func (s *Solid) GroupCodes() []GroupCode {
 		{0, "SOLID"},
 		{8, s.Layer},
 		{62, s.Color},
+		{6, s.LineType},
 		{10, s.X1},
 		{20, s.Y1},
 		{30, 0.0},
@@ -365,6 +390,9 @@ type Insert struct {
 
 	// Color is the ACI color number (0 = BYLAYER).
 	Color int
+
+	// LineType specifies the line pattern applied to the insert reference.
+	LineType string
 
 	// BlockName is the name of the block definition to insert.
 	BlockName string
@@ -391,6 +419,7 @@ func (i *Insert) GroupCodes() []GroupCode {
 		{0, "INSERT"},
 		{8, i.Layer},
 		{62, i.Color},
+		{6, i.LineType},
 		{2, i.BlockName},
 		{10, i.X},
 		{20, i.Y},

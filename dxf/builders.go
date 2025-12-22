@@ -79,11 +79,12 @@ func WithCircleColor(color int) CircleOption {
 //		dxf.WithCircleColor(2))
 func NewCircle(centerX, centerY, radius float64, opts ...CircleOption) *Circle {
 	circle := &Circle{
-		Layer:   "0",
-		Color:   0, // BYLAYER
-		CenterX: centerX,
-		CenterY: centerY,
-		Radius:  radius,
+		Layer:    "0",
+		Color:    0, // BYLAYER
+		LineType: "CONTINUOUS",
+		CenterX:  centerX,
+		CenterY:  centerY,
+		Radius:   radius,
 	}
 	for _, opt := range opts {
 		opt(circle)
@@ -120,6 +121,7 @@ func NewArc(centerX, centerY, radius, startAngle, endAngle float64, opts ...ArcO
 	arc := &Arc{
 		Layer:      "0",
 		Color:      0, // BYLAYER
+		LineType:   "CONTINUOUS",
 		CenterX:    centerX,
 		CenterY:    centerY,
 		Radius:     radius,
@@ -159,10 +161,11 @@ func WithPointColor(color int) PointOption {
 //		dxf.WithPointColor(4))
 func NewPoint(x, y float64, opts ...PointOption) *Point {
 	point := &Point{
-		Layer: "0",
-		Color: 0, // BYLAYER
-		X:     x,
-		Y:     y,
+		Layer:    "0",
+		Color:    0, // BYLAYER
+		LineType: "CONTINUOUS",
+		X:        x,
+		Y:        y,
 	}
 	for _, opt := range opts {
 		opt(point)
@@ -221,6 +224,7 @@ func NewText(x, y float64, content string, opts ...TextOption) *Text {
 	text := &Text{
 		Layer:    "0",
 		Color:    0, // BYLAYER
+		LineType: "CONTINUOUS",
 		X:        x,
 		Y:        y,
 		Height:   2.5, // Default height
@@ -263,16 +267,17 @@ func WithSolidColor(color int) SolidOption {
 //		dxf.WithSolidColor(5))
 func NewSolid(p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y float64, opts ...SolidOption) *Solid {
 	solid := &Solid{
-		Layer: "0",
-		Color: 0, // BYLAYER
-		X1:    p1x,
-		Y1:    p1y,
-		X2:    p2x,
-		Y2:    p2y,
-		X3:    p3x,
-		Y3:    p3y,
-		X4:    p4x,
-		Y4:    p4y,
+		Layer:    "0",
+		Color:    0, // BYLAYER
+		LineType: "CONTINUOUS",
+		X1:       p1x,
+		Y1:       p1y,
+		X2:       p2x,
+		Y2:       p2y,
+		X3:       p3x,
+		Y3:       p3y,
+		X4:       p4x,
+		Y4:       p4y,
 	}
 	for _, opt := range opts {
 		opt(solid)
@@ -325,6 +330,7 @@ func NewInsert(blockName string, x, y float64, opts ...InsertOption) *Insert {
 	insert := &Insert{
 		Layer:     "0",
 		Color:     0, // BYLAYER
+		LineType:  "CONTINUOUS",
 		BlockName: blockName,
 		X:         x,
 		Y:         y,
