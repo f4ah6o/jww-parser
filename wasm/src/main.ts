@@ -1,4 +1,4 @@
-import DxfParser from "dxf-parser";
+import DxfParser from "@f12o/dxf-parser";
 import { Viewer } from "@f12o/three-dxf";
 import "../styles.css";
 
