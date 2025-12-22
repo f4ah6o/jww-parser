@@ -38,8 +38,7 @@ const WASM_PATH = new URL(
   window.location.href
 ).toString();
 
-const NOTO_SANS_JP_WOFF_URL =
-  "https://fonts.gstatic.com/s/notosansjp/v52/-F6ofjtqLzI2JPCgQBnw7HFQogg.woff2";
+const NOTO_SANS_JP_CSS_URL = "https://fonts.googleapis.com/css2?family=Noto+Sans+JP";
 
 const elements = {
   fileInput: document.getElementById("fileInput") as HTMLInputElement,
@@ -94,7 +93,16 @@ async function loadFont(): Promise<Font> {
   const ttfLoader = new TTFLoader();
   const fontLoader = new FontLoader();
 
-  const response = await fetch(NOTO_SANS_JP_WOFF_URL);
+  const cssResponse = await fetch(NOTO_SANS_JP_CSS_URL);
+  if (!cssResponse.ok) {
+    throw new Error(
+      `Failed to load font CSS: ${cssResponse.status} ${cssResponse.statusText}`
+    );
+  }
+
+  const css = await cssResponse.text();
+  const fontUrl = extractFontUrl(css);
+  const response = await fetch(fontUrl);
   if (!response.ok) {
     throw new Error(
       `Failed to load font: ${response.status} ${response.statusText}`
@@ -104,6 +112,17 @@ async function loadFont(): Promise<Font> {
   const fontBuffer = await response.arrayBuffer();
   const ttfData = ttfLoader.parse(fontBuffer);
   return fontLoader.parse(ttfData);
+}
+
+function extractFontUrl(css: string): string {
+  const urlPattern = /url\(("|')?(https:\/\/fonts\.gstatic\.com\/[^\)]+\.woff2)(\1)?\)/i;
+  const match = css.match(urlPattern);
+
+  if (!match?.[2]) {
+    throw new Error("Failed to extract Noto Sans JP font URL from CSS response");
+  }
+
+  return match[2];
 }
 
 async function loadWasm(): Promise<void> {
